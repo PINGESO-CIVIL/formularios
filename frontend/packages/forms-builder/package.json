@@ -1,0 +1,25 @@
+{
+  "name": "@ms-formularios/forms-builder",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "devDependencies": {
+    "vue": "^3.5.44"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.44"
+  },
+  "dependencies": {
+    "@ms-formularios/forms-core": "workspace:*",
+    "@ms-formularios/forms-renderer": "workspace:*"
+  }
+}

@@ -1,0 +1,24 @@
+# Entorno
+.env
+.env.*
+!.env.example
+!.env.mock
+
+# Editores / SO
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Backend
+backend/bin/
+backend/coverage.out
+backend/.data/
+
+# Frontend
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+frontend/apps/forms-admin/test-results/
+frontend/apps/forms-admin/playwright-report/

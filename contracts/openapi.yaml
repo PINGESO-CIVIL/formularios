@@ -1,0 +1,140 @@
+openapi: 3.1.0
+info:
+  title: ms-formularios
+  version: 0.0.0
+  description: |
+    API REST del microservicio de Formularios de la LPS.
+    Fuente de verdad para backend y frontend: todo cambio de API parte aquí.
+
+    Fase 0: solo endpoints operacionales. Los recursos de negocio
+    (plantillas, versiones, respuestas) se agregan con su requerimiento RF-FOR-xx.
+servers:
+  - url: http://localhost:8080
+    description: Desarrollo local
+
+tags:
+  - name: operacion
+    description: Salud y métricas del servicio
+
+paths:
+  /healthz:
+    get:
+      tags: [operacion]
+      operationId: getHealth
+      summary: El proceso está vivo
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /readyz:
+    get:
+      tags: [operacion]
+      operationId: getReadiness
+      summary: El servicio puede atender tráfico (dependencias disponibles)
+      security: []
+      responses:
+        "200":
+          description: Listo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: No listo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /metrics:
+    get:
+      tags: [operacion]
+      operationId: getMetrics
+      summary: Métricas en formato Prometheus
+      security: []
+      responses:
+        "200":
+          description: Métricas
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Provisional. En fase 0 el backend usa el stub `devauth` (JWT HS256 local
+        o headers X-Dev-*). El formato real lo define el MS de usuarios/roles.
+
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+
+    Problem:
+      description: Error según RFC 9457 (application/problem+json).
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+
+    FieldError:
+      type: object
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+          description: Ruta del campo (JSON Pointer o nombre de propiedad).
+        code:
+          type: string
+        message:
+          type: string
+          description: Mensaje en español para el usuario.
+
+  responses:
+    Problem:
+      description: Error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+security:
+  - bearerAuth: []

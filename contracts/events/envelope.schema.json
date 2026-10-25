@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lps/ms-formularios/events/envelope.schema.json",
+  "title": "Sobre estándar de evento (PROVISIONAL)",
+  "description": "Formato propuesto para los eventos de la LPS. Puede cambiar cuando se acuerde con el MS de trazabilidad (ver docs/preguntas-abiertas.md).",
+  "type": "object",
+  "required": ["eventId", "tipo", "version", "ocurridoEn", "actor", "servicioOrigen", "payload"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "tipo": { "type": "string", "pattern": "^[a-z_]+\\.[a-z_]+$", "examples": ["respuesta.enviada"] },
+    "version": { "type": "integer", "minimum": 1 },
+    "ocurridoEn": { "type": "string", "format": "date-time" },
+    "actor": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "rol": { "type": "string" }
+      }
+    },
+    "contexto": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "correlationId": { "type": "string" },
+    "servicioOrigen": { "const": "ms-formularios" },
+    "payload": {
+      "type": "object",
+      "description": "Solo IDs y hashes; nunca el contenido de una respuesta."
+    }
+  },
+  "additionalProperties": false
+}

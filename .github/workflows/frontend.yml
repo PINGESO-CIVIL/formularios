@@ -1,0 +1,33 @@
+name: frontend
+
+on:
+  push:
+    branches: [main]
+    paths: ["frontend/**", "contracts/**", ".github/workflows/frontend.yml"]
+  pull_request:
+    paths: ["frontend/**", "contracts/**", ".github/workflows/frontend.yml"]
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Tipos generados al día con el contrato
+        run: pnpm gen:api && git diff --exit-code packages/forms-core/src/api/schema.d.ts
+      - run: pnpm check
+      - run: pnpm build
+      - run: pnpm --filter forms-admin exec playwright install --with-deps chromium
+      - run: pnpm e2e --project=chromium
