@@ -1,114 +1,110 @@
 # AGENTS.md — backend (Go)
 
-Reglas para trabajar en el servicio Go de `ms-formularios`. Lee también el
-`AGENTS.md` de la raíz: las reglas globales (multi-tenant, inmutabilidad,
-contrato primero, sin lógica por producto) aplican aquí.
+Reglas para trabajar en el servicio Go de `ms-formularios` (PT4). Lee también
+el `AGENTS.md` de la raíz: las reglas globales (lineamientos, contrato primero,
+multi-tenant, inmutabilidad, sin lógica por producto, no invadir otros MS)
+aplican aquí.
 
 ## Stack
 
 | Tema | Elección |
 | --- | --- |
-| Lenguaje | Go 1.25 o superior (ver `go.mod`) |
+| Lenguaje | **Go 1.23** (lineamientos). `go.mod` debe declarar `go 1.23` |
 | HTTP | `net/http` + `github.com/go-chi/chi/v5` |
-| Base de datos | PostgreSQL 16, driver `github.com/jackc/pgx/v5` |
-| Consultas | `sqlc` (SQL en `db/queries/`, código generado en `internal/adapters/postgres/sqlcgen/`) |
-| Migraciones | `golang-migrate` (archivos `db/migrations/NNNN_nombre.up.sql` / `.down.sql`) |
-| Validación de esquemas | `github.com/santhosh-tekuri/jsonschema/v6` (JSON Schema 2020-12) |
+| Base de datos | **MongoDB** (lineamientos), driver oficial `go.mongodb.org/mongo-driver` |
+| Contrato | `contracts/openapi.yaml` (OpenAPI 3.1.0); Swagger UI servido en `/docs` |
+| Validación de esquemas de formulario | `github.com/santhosh-tekuri/jsonschema/v6` (JSON Schema 2020-12) |
 | JWT | `github.com/lestrrat-go/jwx/v2` |
 | Logs | `log/slog` en JSON |
-| Métricas | `github.com/prometheus/client_golang` |
-| Pruebas | `testing`, `github.com/stretchr/testify`, `github.com/testcontainers/testcontainers-go` |
-| Lint | `golangci-lint` (config en `.golangci.yml`) |
+| Pruebas | `testing`, `github.com/stretchr/testify`, `github.com/testcontainers/testcontainers-go` (MongoDB) |
+| Lint | `gofmt` + `golangci-lint` (config en `.golangci.yml`) |
+| Calidad / seguridad | SonarQube (reporte de cobertura `coverage.out`) y Trivy (imagen + `go.mod`) |
+
+> ⚠️ La base de datos está pendiente de confirmación del equipo docente; por
+> ahora manda el lineamiento (MongoDB). Quedan restos de PostgreSQL (`sqlc.yaml`,
+> `db/`, `pgx`) que se eliminarán en una tarea aparte, con OK del equipo.
 
 No agregues dependencias nuevas sin justificarlo en el PR. Prefiere la
-librería estándar cuando alcance.
+librería estándar cuando alcance. Toda dependencia debe pasar Trivy.
 
 ## Comandos
 
 ```bash
 make run            # levanta la API en modo dev (requiere docker compose up -d)
-make worker         # levanta el worker (outbox relay)
-make test           # pruebas unitarias
-make test-int       # pruebas de integración (Postgres en contenedor)
+make test           # pruebas unitarias + coverage.out
+make test-int       # pruebas de integración (MongoDB en contenedor)
 make lint           # golangci-lint
-make sqlc           # regenera código de sqlc
-make migrate-up     # aplica migraciones
-make migrate-new name=create_form_templates
+make trivy          # escaneo de vulnerabilidades de dependencias e imagen
 make check          # lint + test + test-int: córrelo antes de terminar
 ```
 
 Si un comando no existe todavía en el `Makefile`, créalo como parte de tu tarea.
 
-## Estructura
+## Arquitectura: Handlers → Services → Repositories
+
+Los lineamientos exigen Clean Architecture con esas tres capas. En este repo
+se corresponden así:
+
+| Capa (lineamientos) | Carpeta | Responsabilidad |
+| --- | --- | --- |
+| Handlers | `internal/adapters/http/` | Rutas, DTOs (`snake_case`), middleware, traducción de errores al `ErrorEstandar` |
+| Services | `internal/app/` (+ reglas en `internal/domain/`) | Casos de uso, uno por archivo (`publish_version.go`) |
+| Repositories | `internal/adapters/mongo/` | Acceso a MongoDB; implementan interfaces de `internal/ports/` |
+| Mocks de otros MS | `internal/adapters/{auth,files,events}/` | PT6, PT7, PT8 en fase 1 |
 
 ```
 backend/
-├── cmd/
-│   ├── api/main.go           # solo wiring: config, adaptadores, servidor
-│   └── worker/main.go        # outbox relay; luego recurrencias
+├── cmd/api/main.go           # solo wiring: config, adaptadores, servidor
 ├── internal/
 │   ├── domain/               # entidades y reglas; SIN imports de infraestructura
-│   │   ├── template/         # Template, Version, estados, publicación
-│   │   ├── submission/       # Submission, estados, content hash
+│   │   ├── template/         # Formulario, Versión, estados, publicación
+│   │   ├── submission/       # Respuesta, estados, hash de contenido
 │   │   ├── signature/
 │   │   └── feature/          # features LPS por tenant
-│   ├── app/                  # casos de uso, uno por archivo (publish_version.go)
-│   ├── ports/                # interfaces hacia afuera
+│   ├── app/                  # services / casos de uso
+│   ├── ports/                # interfaces hacia afuera (repos y otros MS)
 │   ├── adapters/
-│   │   ├── http/             # handlers, DTOs, middleware, errores
-│   │   ├── postgres/         # repositorios (implementan ports)
-│   │   ├── auth/devauth/     # stub de identidad (fase 0)
-│   │   ├── files/localfs/    # stub de archivos (fase 0)
-│   │   └── events/           # outbox + logpublisher (fase 0)
+│   │   ├── http/             # handlers
+│   │   ├── mongo/            # repositories
+│   │   ├── auth/             # mock PT6 (JWT quemado) → luego adaptador real
+│   │   ├── files/            # mock PT7 → luego adaptador real
+│   │   └── events/           # mock PT8 (consola) → luego adaptador real
 │   ├── schema/               # compilación y validación de esquemas + formatos custom (rut)
 │   └── config/
-├── db/
-│   ├── migrations/
-│   └── queries/
 └── test/integration/
 ```
 
 ### Reglas de dependencia (obligatorias)
 
-- `domain` no importa nada de `app`, `adapters`, `ports`, ni paquetes de terceros
-  de infraestructura (pgx, chi, jwx).
+- `domain` no importa nada de `app`, `adapters`, `ports` ni librerías de
+  infraestructura (mongo-driver, chi, jwx).
 - `app` depende de `domain` y `ports`. Nunca de `adapters`.
 - `adapters` implementan `ports` y pueden importar `domain`.
 - `cmd` es el único lugar que conoce todos los adaptadores y los conecta.
-- Los handlers HTTP no tienen lógica de negocio: parsean, llaman al caso de uso
-  y traducen el resultado.
+- Los handlers no tienen lógica de negocio.
 
-## Puertos y stubs de fase 0
+## Puertos y mocks (fase 1)
 
-Los servicios externos no existen todavía. Implementa contra estas interfaces y
-usa los stubs; no llames a URLs reales de otros MS.
+Los otros MS no están disponibles. Implementa contra estas interfaces y usa los
+mocks; no llames a URLs reales de otros grupos.
 
 ```go
-// ports/identity.go
+// ports/identity.go — PT6 Identity Provider
 type Principal struct {
     UserID      string
     TenantID    string
-    Permissions []string // ej. "forms:design", "forms:fill"
+    Permissions []string // provisionales, ver más abajo
 }
 type Authenticator interface {
     Authenticate(ctx context.Context, r *http.Request) (Principal, error)
 }
 
-// ports/files.go
+// ports/files.go — PT7 Bóveda Documental
 type FileStore interface {
     Exists(ctx context.Context, tenantID, fileID string) (bool, error)
 }
 
-// ports/events.go
-type Event struct {
-    Type          string          // "respuesta.enviada"
-    Version       int
-    OccurredAt    time.Time
-    Actor         Actor           // id + rol
-    Context       map[string]string
-    CorrelationID string
-    Payload       json.RawMessage
-}
+// ports/events.go — PT8 Central Auditoría
 type EventPublisher interface {
     Publish(ctx context.Context, e Event) error
 }
@@ -116,71 +112,80 @@ type EventPublisher interface {
 // ports/clock.go e ids.go: inyectar tiempo e IDs para pruebas deterministas
 ```
 
-| Stub | Comportamiento | Activación |
+| Mock | Comportamiento (según "Mock requerido" de lineamientos) | Activación |
 | --- | --- | --- |
-| `devauth` | Acepta JWT HS256 firmado con `DEV_JWT_SECRET`, o headers `X-Dev-User`, `X-Dev-Tenant`, `X-Dev-Permissions` | Solo si `APP_ENV=dev`; en cualquier otro entorno el servicio no arranca con este stub |
-| `localfs` | `Exists` revisa una carpeta local; incluye endpoint dev para subir archivos de prueba | `FILESTORE=local` |
-| `logpublisher` | El worker lee `outbox_events` y escribe cada evento en el log en JSON | `EVENTS=log` |
+| auth (PT6) | Acepta un JWT de prueba quemado / firmado con `DEV_JWT_SECRET` que simula un usuario emisor válido | Solo si `APP_ENV=dev`; en otro entorno el servicio no arranca con este mock |
+| files (PT7) | Asume que todo `file_id` existe y ya viene autenticado | `FILESTORE=mock` |
+| events (PT8) | Imprime cada evento en consola en JSON | `EVENTS=console` |
 
-Los nombres de permisos (`forms:read`, `forms:design`, `forms:fill`,
-`forms:review`, `forms:assign`, `forms:export`) son **provisionales**:
-centralízalos en `internal/domain/permission.go` para cambiarlos en un solo lugar.
+Formato real del token, claims, nombres de roles y formato de logs de PT8:
+**no los supongas**. `// TODO(integracion)` + `docs/preguntas-abiertas.md`.
+Los permisos (`forms:read`, `forms:design`, `forms:fill`, `forms:review`) son
+provisionales y se centralizan en un solo archivo del dominio.
 
-## Eventos
+## Eventos (hacia PT8)
 
-- Se escriben en `outbox_events` **en la misma transacción** que el cambio de
-  datos. Nunca publiques directo desde un caso de uso.
-- El sobre sigue el formato propuesto para la LPS: `eventId`, `tipo`, `version`,
-  `ocurridoEn`, `actor`, `contexto`, `correlationId`, `servicioOrigen`
-  (`ms-formularios`), `payload`. Es provisional: arma el sobre en un solo lugar
-  (`adapters/events/envelope.go`).
-- El payload lleva IDs y hashes, nunca el contenido de la respuesta.
-- Cada tipo de evento tiene su JSON Schema en `contracts/events/` y una prueba
-  que valida un ejemplo contra él.
+- Un evento por acción: `formulario.creado`, `version.publicada`,
+  `respuesta.enviada`, etc.
+- Sobre provisional: `event_id`, `tipo`, `version`, `ocurrido_en`, `actor`,
+  `tenant_id`, `correlation_id`, `servicio_origen` (`ms-formularios`), `payload`.
+  Se arma en un solo lugar (`adapters/events/envelope.go`).
+- El payload lleva IDs y hashes, **nunca** el contenido de la respuesta.
+- Cada tipo de evento tiene su JSON Schema en `contracts/events/`.
 
-## Base de datos
+## Base de datos (MongoDB)
 
-- Nombres en `snake_case`, tablas en plural, PK `id uuid` (UUIDv7 generado en Go).
-- Toda tabla de negocio: `tenant_id uuid not null`, `created_at timestamptz not null default now()`.
-- Esquemas y respuestas en `jsonb`. Valores que se filtran → `submission_values`, no índices sobre JSON arbitrario.
-- Índices que empiezan por `tenant_id`.
-- Migraciones pequeñas, una por cambio, siempre con `down`.
-- No uses `ON DELETE CASCADE` sobre respuestas ni firmas.
+- Colecciones en inglés, `snake_case` y plural: `form_templates`,
+  `form_versions`, `submissions`, `tenant_features`.
+- `_id` es `ObjectID`; se expone en la API como `id` (string hex).
+- Todo documento de negocio: `tenant_id`, `created_at` (UTC).
+- Esquemas y respuestas se guardan como subdocumentos (BSON), aprovechando el
+  modelo dinámico de MongoDB.
+- Índices compuestos que empiezan por `tenant_id`. Se crean desde código al
+  arrancar (idempotente) o con scripts versionados con su reversa.
+- Nunca borrado físico de versiones publicadas ni respuestas enviadas.
 
 ## API HTTP
 
-- Prefijo `/api/v1`. JSON en `camelCase`.
-- Errores con `application/problem+json` (RFC 9457): `type`, `title`, `status`,
-  `detail`, y `errors[]` con `{ field, code, message }` para validación.
-  Los `message` van en español.
-- Paginación por cursor: `?limit=&cursor=` → `{ items, nextCursor }`.
-- `X-Correlation-Id`: se lee si viene, se genera si no, se devuelve en la respuesta y va en cada log.
-- Los handlers se escriben contra `contracts/openapi.yaml`. Si generas tipos desde el contrato, usa `oapi-codegen` y no edites el código generado.
+- Se escribe contra `contracts/openapi.yaml`. Si generas tipos, usa
+  `oapi-codegen` y no edites el código generado.
+- Prefijo `/api/v1`, recursos en español y plural, JSON en `snake_case`.
+- Errores con el `ErrorEstandar` del contrato: `{ codigo, mensaje, detalles }`
+  y, en validación de respuestas, `errores[]` con `{ campo, mensaje }`.
+  Mensajes en español.
+- `X-Correlation-Id`: se lee si viene, se genera si no, se devuelve y va en cada log.
+- `/healthz` y `/readyz` sin autenticación.
 
 ## Pruebas
 
-- Dominio: pruebas unitarias tabla-dirigidas, sin base de datos.
-- Casos de uso: con repositorios en memoria (`internal/app/apptest/`).
-- Repositorios y migraciones: integración con testcontainers.
-- HTTP: `httptest` contra el router completo con `devauth`.
+- Dominio: tabla-dirigidas, sin base de datos.
+- Services: con repositorios en memoria.
+- Repositories: integración con MongoDB en testcontainers.
+- HTTP: `httptest` contra el router completo con el mock de PT6.
 - Nombra las pruebas por regla: `TestPublishVersion_RejectsAlreadyPublished`.
-- Cada regla `RN-FOR-xx` implementada tiene al menos una prueba que la cita en un comentario.
+- Cada regla `RN-FOR-xx` implementada tiene al menos una prueba que la cita.
+- Genera `coverage.out` para SonarQube.
 
-## Qué construir ahora (en este orden)
+## Qué construir ahora: Hito 1 (13 de noviembre)
 
-1. Esqueleto: `go.mod`, `cmd/api`, config por env, `slog`, `/healthz`, `/readyz`, `/metrics`, `Makefile`, `Dockerfile` multi-stage, `.golangci.yml`, CI.
-2. Middleware: correlation id, recover, logging de requests, autenticación vía `ports.Authenticator` con `devauth`, extracción de tenant.
-3. Migraciones iniciales: `form_templates`, `form_versions`, `submissions`, `tenant_features`, `outbox_events`.
-4. Paquete `schema`: compilar un esquema de formulario, validarlo y devolver errores por campo; formato custom `rut` con dígito verificador.
-5. Dominio `template`: crear plantilla, borrador de versión, publicar, despublicar, archivar (RF-FOR-01, 04, 05).
-6. Dominio `submission`: iniciar sobre una versión publicada, guardar borrador, enviar con validación, hash del contenido, inmutabilidad (RF-FOR-10 a 13).
-7. Outbox + worker con `logpublisher`.
-8. Listado de respuestas con filtros básicos y paginación (RF-FOR-25).
+1. Contrato `contracts/openapi.yaml` completo (formularios, versiones,
+   respuestas) en el estilo del swagger de ejemplo, validado.
+2. Swagger UI servido por el backend.
+3. Handlers de todos los endpoints del contrato respondiendo con **mocks**
+   coherentes con el contrato (incluidos errores).
+4. Mock de PT6 (JWT quemado) en el middleware de autenticación + extracción de tenant.
+5. CI con lint, pruebas, SonarQube y Trivy.
+
+**Hito 2 (4 de diciembre):** dominio real, validación de esquemas, repositorios
+MongoDB, eventos a consola/PT8, cero mocks propios.
 
 ## Qué NO hacer en esta fase
 
-- No implementes firma, adjuntos reales, revisión, asignaciones ni exportación hasta que se pida.
-- No llames a otros microservicios ni supongas su URL, su formato de token o sus roles.
-- No guardes usuarios, nombres ni emails: solo `user_id` del principal.
+- No implementes firma, adjuntos reales, revisión, asignaciones ni exportación
+  hasta que se pida.
+- No generes PDF/Excel (PT1), no envíes correos (PT10), no guardes archivos (PT7),
+  no emitas tokens (PT6), no hagas bitácora propia (PT8).
+- No llames a otros microservicios ni supongas su URL, formato de token o roles.
+- No guardes nombres ni emails de usuarios: solo el `user_id` del token.
 - No metas reglas de un producto en el dominio.
-- No uses `devauth` fuera de `APP_ENV=dev`.
+- No uses el mock de PT6 fuera de `APP_ENV=dev`.
