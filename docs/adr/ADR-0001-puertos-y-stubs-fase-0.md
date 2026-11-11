@@ -1,6 +1,6 @@
 # ADR-0001: Puertos y stubs para dependencias externas en fase 0
 
-- Estado: aceptado
+- Estado: reemplazado parcialmente por ADR-0002
 - Fecha: 2026-10-25
 
 ## Contexto

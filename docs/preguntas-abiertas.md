@@ -1,13 +1,16 @@
 # Preguntas abiertas
 
-Dudas sobre integración con otros microservicios de la LPS o sobre el alcance
-de este MS. Cada `TODO(integracion)` del código debe tener una entrada aquí.
+Dudas sobre integración con otros paquetes de trabajo (PT) de la LPS o sobre
+el alcance de este MS (PT4). Cada `TODO(integracion)` del código debe tener una
+entrada aquí.
 
-| # | Tema | Pregunta | Afecta a | Estado |
-| --- | --- | --- | --- | --- |
-| 1 | Alcance | ¿Qué responsabilidades quedan en `ms-formularios` y cuáles en los demás MS (usuarios/roles, archivos, notificaciones, trazabilidad, reportes)? | Todo | Abierta |
-| 2 | Identidad | Formato real del token del MS de usuarios/roles (algoritmo, claims, cómo viaja el tenant). | `ports.Authenticator` | Abierta |
-| 3 | Permisos | Nombres reales de permisos (hoy provisionales: `forms:read`, `forms:design`, `forms:fill`, `forms:review`, `forms:assign`, `forms:export`). | Backend, frontend | Abierta |
-| 4 | Archivos | API del MS de archivos para verificar/subir adjuntos y firmas. | `ports.FileStore` | Abierta |
-| 5 | Eventos | Broker elegido para la LPS y formato definitivo del sobre de eventos. | `ports.EventPublisher`, `contracts/events/` | Abierta |
-| 6 | Reportes | ¿Exportación y reportes viven aquí o en el MS de reportes? | Alcance | Abierta |
+| # | Tema | Pregunta | Con quién | Afecta a | Estado |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Base de datos | ¿Se confirma MongoDB como base de datos única (lineamientos) o hay cambios? | Equipo docente | Backend, `docker-compose`, CI | Abierta (se resuelve el viernes) |
+| 2 | Identidad | Formato real del JWT de PT6: algoritmo, claims, cómo viaja el tenant, cómo se obtiene la clave pública. | PT6 Identity Provider | `ports.Authenticator` | Abierta |
+| 3 | Permisos | Nombres reales de roles/permisos (hoy provisionales: `forms:read`, `forms:design`, `forms:fill`, `forms:review`). | PT6 Identity Provider | Backend, frontend | Abierta |
+| 4 | Archivos | API de PT7 para subir/verificar adjuntos y firmas; qué identificador devuelve. | PT7 Bóveda Documental | `ports.FileStore` | Abierta |
+| 5 | Auditoría | Formato y transporte de los logs que recibe PT8 (HTTP, broker, campos obligatorios). | PT8 Central Auditoría | `ports.EventPublisher`, `contracts/events/` | Abierta |
+| 6 | Límite con PT3 | PT3 "crea, versiona y almacena estructuras de documentos". ¿Dónde termina una plantilla de documento y empieza una definición de formulario? ¿Debemos consumir algo de PT3? | PT3 Gestor de Plantillas | Alcance | Abierta |
+| 7 | Reportes | ¿PT1 generará PDF/Excel de respuestas de formularios? ¿Qué endpoint/forma de datos necesita de nosotros? | PT1 Motor de Reportes | Contrato | Abierta |
+| 8 | Calidad | Servidor, token y umbrales de SonarQube del curso. | Equipo docente | CI | Abierta |
