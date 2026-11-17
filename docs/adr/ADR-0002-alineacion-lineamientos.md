@@ -1,6 +1,6 @@
 # ADR-0002: Alineación con los lineamientos técnicos del curso
 
-- Estado: aceptado
+- Estado: aceptado (actualizado parcialmente por ADR-0003 en base de datos e IDs)
 - Fecha: 2026-11-11
 
 ## Contexto

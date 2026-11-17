@@ -11,18 +11,16 @@ aplican aquí.
 | --- | --- |
 | Lenguaje | **Go 1.23** (lineamientos). `go.mod` debe declarar `go 1.23` |
 | HTTP | `net/http` + `github.com/go-chi/chi/v5` |
-| Base de datos | **MongoDB** (lineamientos), driver oficial `go.mongodb.org/mongo-driver` |
+| Base de datos | **PostgreSQL 16** (`ADR-0003`), driver `github.com/jackc/pgx/v5`, `sqlc` y `golang-migrate` |
 | Contrato | `contracts/openapi.yaml` (OpenAPI 3.1.0); Swagger UI servido en `/docs` |
 | Validación de esquemas de formulario | `github.com/santhosh-tekuri/jsonschema/v6` (JSON Schema 2020-12) |
 | JWT | `github.com/lestrrat-go/jwx/v2` |
 | Logs | `log/slog` en JSON |
-| Pruebas | `testing`, `github.com/stretchr/testify`, `github.com/testcontainers/testcontainers-go` (MongoDB) |
+| Pruebas | `testing`, `github.com/stretchr/testify`, `github.com/testcontainers/testcontainers-go` (PostgreSQL) |
 | Lint | `gofmt` + `golangci-lint` (config en `.golangci.yml`) |
 | Calidad / seguridad | SonarQube (reporte de cobertura `coverage.out`) y Trivy (imagen + `go.mod`) |
 
-> ⚠️ La base de datos está pendiente de confirmación del equipo docente; por
-> ahora manda el lineamiento (MongoDB). Quedan restos de PostgreSQL (`sqlc.yaml`,
-> `db/`, `pgx`) que se eliminarán en una tarea aparte, con OK del equipo.
+> Decisión de base de datos documentada en [`../docs/adr/ADR-0003-persistencia-postgresql-jsonb.md`](../docs/adr/ADR-0003-persistencia-postgresql-jsonb.md).
 
 No agregues dependencias nuevas sin justificarlo en el PR. Prefiere la
 librería estándar cuando alcance. Toda dependencia debe pasar Trivy.
@@ -32,8 +30,11 @@ librería estándar cuando alcance. Toda dependencia debe pasar Trivy.
 ```bash
 make run            # levanta la API en modo dev (requiere docker compose up -d)
 make test           # pruebas unitarias + coverage.out
-make test-int       # pruebas de integración (MongoDB en contenedor)
+make test-int       # pruebas de integración (PostgreSQL en contenedor)
 make lint           # golangci-lint
+make sqlc           # genera código tipado en internal/adapters/postgres/sqlcgen
+make migrate-up     # aplica migraciones SQL en db/migrations
+make migrate-down   # revierte la última migración SQL
 make trivy          # escaneo de vulnerabilidades de dependencias e imagen
 make check          # lint + test + test-int: córrelo antes de terminar
 ```
@@ -49,12 +50,15 @@ se corresponden así:
 | --- | --- | --- |
 | Handlers | `internal/adapters/http/` | Rutas, DTOs (`snake_case`), middleware, traducción de errores al `ErrorEstandar` |
 | Services | `internal/app/` (+ reglas en `internal/domain/`) | Casos de uso, uno por archivo (`publish_version.go`) |
-| Repositories | `internal/adapters/mongo/` | Acceso a MongoDB; implementan interfaces de `internal/ports/` |
+| Repositories | `internal/adapters/postgres/` | Acceso a PostgreSQL (`pgx/v5` + `sqlc`); implementan interfaces de `internal/ports/` |
 | Mocks de otros MS | `internal/adapters/{auth,files,events}/` | PT6, PT7, PT8 en fase 1 |
 
 ```
 backend/
 ├── cmd/api/main.go           # solo wiring: config, adaptadores, servidor
+├── db/
+│   ├── migrations/           # migraciones SQL (.up.sql / .down.sql)
+│   └── queries/              # consultas SQL para sqlc
 ├── internal/
 │   ├── domain/               # entidades y reglas; SIN imports de infraestructura
 │   │   ├── template/         # Formulario, Versión, estados, publicación
@@ -65,7 +69,7 @@ backend/
 │   ├── ports/                # interfaces hacia afuera (repos y otros MS)
 │   ├── adapters/
 │   │   ├── http/             # handlers
-│   │   ├── mongo/            # repositories
+│   │   ├── postgres/         # repositories (pgx/v5 + sqlcgen)
 │   │   ├── auth/             # mock PT6 (JWT quemado) → luego adaptador real
 │   │   ├── files/            # mock PT7 → luego adaptador real
 │   │   └── events/           # mock PT8 (consola) → luego adaptador real
@@ -77,7 +81,7 @@ backend/
 ### Reglas de dependencia (obligatorias)
 
 - `domain` no importa nada de `app`, `adapters`, `ports` ni librerías de
-  infraestructura (mongo-driver, chi, jwx).
+  infraestructura (`pgx`, `chi`, `jwx`).
 - `app` depende de `domain` y `ports`. Nunca de `adapters`.
 - `adapters` implementan `ports` y pueden importar `domain`.
 - `cmd` es el único lugar que conoce todos los adaptadores y los conecta.
@@ -133,17 +137,20 @@ provisionales y se centralizan en un solo archivo del dominio.
 - El payload lleva IDs y hashes, **nunca** el contenido de la respuesta.
 - Cada tipo de evento tiene su JSON Schema en `contracts/events/`.
 
-## Base de datos (MongoDB)
+## Base de datos (PostgreSQL)
 
-- Colecciones en inglés, `snake_case` y plural: `form_templates`,
-  `form_versions`, `submissions`, `tenant_features`.
-- `_id` es `ObjectID`; se expone en la API como `id` (string hex).
-- Todo documento de negocio: `tenant_id`, `created_at` (UTC).
-- Esquemas y respuestas se guardan como subdocumentos (BSON), aprovechando el
-  modelo dinámico de MongoDB.
-- Índices compuestos que empiezan por `tenant_id`. Se crean desde código al
-  arrancar (idempotente) o con scripts versionados con su reversa.
-- Nunca borrado físico de versiones publicadas ni respuestas enviadas.
+- Tablas en inglés, `snake_case` y plural (definidas en `db/migrations/0001_init.up.sql`, ver `ADR-0003`):
+  - `tenant_features` (`PK: tenant_id`, `features JSONB`).
+  - `form_templates` (`PK: id UUID`, `tenant_id`, metadatos del formulario).
+  - `form_versions` (`PK: id UUID`, `FK: template_id` con `ON DELETE RESTRICT`, `UNIQUE (tenant_id, template_id, version)`, `status` en `draft|published|archived`, `schema JSONB`, `ui_schema JSONB`).
+  - `submissions` (`PK: id UUID`, `FK: template_id` y `version_id` con `ON DELETE RESTRICT`, `status` en `draft|submitted`, `subject_type`/`subject_id` opacos, `answers JSONB`, `content_hash`).
+- `id` es `UUID`; se expone en la API como `id` (`type: string`, `format: uuid`).
+- Toda tabla de negocio tiene `tenant_id` y `created_at` (`TIMESTAMPTZ`, UTC).
+- Esquemas (`schema`, `ui_schema`) y respuestas (`answers`) se guardan en columnas
+  `JSONB`, combinando el modelo dinámico de formularios con integridad referencial SQL.
+- Índices compuestos que empiezan por `tenant_id`. Todo cambio de esquema o índice
+  se versiona en `db/migrations/` con su archivo `.up.sql` y `.down.sql`.
+- Nunca borrado físico (`ON DELETE RESTRICT`) de versiones publicadas ni respuestas enviadas.
 
 ## API HTTP
 
@@ -160,7 +167,7 @@ provisionales y se centralizan en un solo archivo del dominio.
 
 - Dominio: tabla-dirigidas, sin base de datos.
 - Services: con repositorios en memoria.
-- Repositories: integración con MongoDB en testcontainers.
+- Repositories: integración con PostgreSQL en testcontainers.
 - HTTP: `httptest` contra el router completo con el mock de PT6.
 - Nombra las pruebas por regla: `TestPublishVersion_RejectsAlreadyPublished`.
 - Cada regla `RN-FOR-xx` implementada tiene al menos una prueba que la cita.
@@ -177,7 +184,7 @@ provisionales y se centralizan en un solo archivo del dominio.
 5. CI con lint, pruebas, SonarQube y Trivy.
 
 **Hito 2 (4 de diciembre):** dominio real, validación de esquemas, repositorios
-MongoDB, eventos a consola/PT8, cero mocks propios.
+PostgreSQL, eventos a consola/PT8, cero mocks propios.
 
 ## Qué NO hacer en esta fase
 
