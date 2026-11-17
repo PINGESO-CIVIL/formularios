@@ -6,7 +6,7 @@ entrada aquí.
 
 | # | Tema | Pregunta | Con quién | Afecta a | Estado |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Base de datos | ¿Se confirma MongoDB como base de datos única (lineamientos) o hay cambios? | Equipo docente | Backend, `docker-compose`, CI | Abierta (se resuelve el viernes) |
+| 1 | Base de datos | ¿Se confirma MongoDB como base de datos única (lineamientos) o se adopta PostgreSQL? | Equipo docente / Equipo PT4 | Backend, `docker-compose`, CI | Resuelta: se adopta PostgreSQL + `JSONB` (ver `ADR-0003`) |
 | 2 | Identidad | Formato real del JWT de PT6: algoritmo, claims, cómo viaja el tenant, cómo se obtiene la clave pública. | PT6 Identity Provider | `ports.Authenticator` | Abierta |
 | 3 | Permisos | Nombres reales de roles/permisos (hoy provisionales: `forms:read`, `forms:design`, `forms:fill`, `forms:review`). | PT6 Identity Provider | Backend, frontend | Abierta |
 | 4 | Archivos | API de PT7 para subir/verificar adjuntos y firmas; qué identificador devuelve. | PT7 Bóveda Documental | `ports.FileStore` | Abierta |

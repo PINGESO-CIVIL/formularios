@@ -97,14 +97,12 @@ Reglas:
 | Contrato API | OpenAPI (YAML) + Swagger UI | **3.1.0** |
 | Backend | Go | **1.23** |
 | Frontend | Vue.js, Composition API | **3.5** |
-| Base de datos | **MongoDB** (única para todo el ecosistema) | — |
+| Base de datos | **PostgreSQL** (`JSONB` para esquemas y respuestas dinámicas) | **16** |
 | Análisis estático | **SonarQube** en el pipeline (bugs, code smells, cobertura) | — |
 | Vulnerabilidades | **Trivy** (contenedores y dependencias Go/Vue) | — |
 
-> ⚠️ **Base de datos pendiente de confirmar** con el equipo docente. Por ahora
-> se sigue el lineamiento (MongoDB). El código actual del repo todavía tiene
-> restos de PostgreSQL (`sqlc`, `docker-compose`, CI) y `go.mod` declara Go 1.26:
-> se alinearán en tareas separadas, con su propio commit.
+> Decisión de base de datos documentada en [`docs/adr/ADR-0003-persistencia-postgresql-jsonb.md`](docs/adr/ADR-0003-persistencia-postgresql-jsonb.md):
+> se utiliza PostgreSQL 16 (`pgx/v5`, `sqlc`, `golang-migrate`) con columnas `JSONB` para estructuras dinámicas.
 
 ## Reglas de arquitectura (lineamientos)
 
@@ -114,8 +112,8 @@ Reglas:
 2. **Clean Architecture: Handlers → Services → Repositories.**
    - *Handlers*: HTTP; parsean, validan forma, llaman al service, traducen respuesta.
    - *Services*: casos de uso y reglas de negocio.
-   - *Repositories*: acceso a MongoDB.
-   - El dominio no conoce HTTP ni MongoDB. (Ver `backend/AGENTS.md` para la
+   - *Repositories*: acceso a PostgreSQL.
+   - El dominio no conoce HTTP ni PostgreSQL. (Ver `backend/AGENTS.md` para la
      correspondencia con las carpetas.)
 3. **Frontends modulares.** Vistas y componentes aislados, fáciles de ensamblar
    en el producto final de la LPS.
@@ -136,7 +134,7 @@ Reglas:
 - Campos JSON en **español y `snake_case`** (`fecha_creacion`, `tenant_id`).
 - Esquemas separados de entrada y salida: `XxxRequest` / `XxxResponse`
   (la respuesta incluye lo enviado + campos autogenerados: `id`, `fecha_creacion`…).
-- IDs: **ObjectID de MongoDB** (string hex de 24 caracteres).
+- IDs: **UUID** (`type: string`, `format: uuid`).
 - Fechas en ISO 8601 / RFC 3339, UTC (`format: date-time`).
 - Errores con el esquema estándar del ejemplo, reutilizado vía `components/responses`
   (`BadRequest`, `NotFound`, `InternalServerError`, más `Unauthorized`, `Forbidden`, `Conflict`):
@@ -173,7 +171,7 @@ Reglas:
 
 ### Idioma
 
-- Código Go/TS, identificadores, nombres de colecciones: **inglés**.
+- Código Go/TS, identificadores, nombres de tablas y columnas SQL: **inglés**.
 - Contrato público (rutas y campos JSON), textos de UI, mensajes de error y
   documentación: **español**.
 - Eventos en formato LPS en español: `formulario.creado`, `version.publicada`,
@@ -237,4 +235,4 @@ son del Hito 2.
 - Contrato OpenAPI actualizado y válido si cambió la API.
 - Pruebas que cubren el caso feliz y al menos un caso de error por regla.
 - Sin `TODO` nuevos salvo `TODO(integracion)` registrados en preguntas abiertas.
-- Cambios de índices o datos en MongoDB con su script de reversa.
+- Cambios de esquema o índices en PostgreSQL con su migración `.up.sql` y `.down.sql` en `backend/db/migrations/`.

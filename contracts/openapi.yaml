@@ -8,6 +8,7 @@ info:
 
     Fase 0: solo endpoints operacionales. Los recursos de negocio
     (plantillas, versiones, respuestas) se agregan con su requerimiento RF-FOR-xx.
+    Los identificadores de recursos utilizan formato UUID (`format: uuid`, ver ADR-0003).
 servers:
   - url: http://localhost:8080
     description: Desarrollo local

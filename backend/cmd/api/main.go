@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	httpadapter "github.com/DiegoRaAr/ms-formularios-pingeso/backend/internal/adapters/http"
+	"github.com/DiegoRaAr/ms-formularios-pingeso/backend/internal/adapters/postgres"
 	"github.com/DiegoRaAr/ms-formularios-pingeso/backend/internal/config"
 )
 
@@ -38,7 +38,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	pool, err := postgres.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}

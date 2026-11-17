@@ -12,9 +12,9 @@ de los usuarios, de forma genérica para cualquier producto derivado de la LPS.
 
 ## Stack
 
-OpenAPI 3.1.0 · Go 1.23 · Vue 3.5 (Composition API) · MongoDB · SonarQube · Trivy
+OpenAPI 3.1.0 · Go 1.23 · Vue 3.5 (Composition API) · PostgreSQL 16 (`JSONB`) · SonarQube · Trivy
 
-> La base de datos está pendiente de confirmación del equipo docente.
+> Ver [`docs/adr/ADR-0003-persistencia-postgresql-jsonb.md`](docs/adr/ADR-0003-persistencia-postgresql-jsonb.md) sobre la adopción de PostgreSQL con `JSONB`.
 
 ## Estructura
 
