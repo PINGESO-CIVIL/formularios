@@ -24,4 +24,3 @@ func TestNewPool_RejectsInvalidDatabaseURL(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, pool)
 }
-
