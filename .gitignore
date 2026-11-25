@@ -1,24 +1,32 @@
-# Entorno
+# Binarios y artefactos de Go
+*.exe
+*.test
+*.out
+coverage.*
+!coverage.go
+
+# Dependencias, builds y reportes del frontend
+node_modules/
+dist/
+apps/web/coverage/
+apps/web/test-results/
+apps/web/playwright-report/
+*.tsbuildinfo
+
+# Variables de entorno: nunca se suben
 .env
 .env.*
 !.env.example
-!.env.mock
+
+# SonarQube
+.scannerwork/
+
+# Llaves y secretos: nunca se suben
+.secretos/
+*.pem
 
 # Editores / SO
 .idea/
 .vscode/*
 !.vscode/extensions.json
 .DS_Store
-
-# Backend
-backend/bin/
-backend/coverage.out
-backend/.data/
-
-# Frontend
-node_modules/
-dist/
-coverage/
-*.tsbuildinfo
-frontend/apps/forms-admin/test-results/
-frontend/apps/forms-admin/playwright-report/
