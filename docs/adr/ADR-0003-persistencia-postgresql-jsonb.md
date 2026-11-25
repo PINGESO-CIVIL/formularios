@@ -1,6 +1,6 @@
 # ADR-0003: Persistencia en PostgreSQL con JSONB para esquemas y respuestas dinámicas
 
-- Estado: aceptado
+- Estado: reemplazado por ADR-0004
 - Fecha: 2026-11-16
 - Reemplaza parcialmente a: ADR-0002 (sección de base de datos e identificadores)
 
@@ -12,6 +12,7 @@ datos de referencia (`ADR-0002`), la base técnica del repositorio (`docker-comp
 construida sobre **PostgreSQL 16**.
 
 `ms-formularios` (PT4) necesita combinar dos mundos:
+
 1. **Metadatos relacionales estrictos e inmutabilidad transaccional:** relación
    entre formularios (`form_templates`), sus versiones (`form_versions`),
    respuestas (`submissions`) y configuración por tenant (`tenant_features`),
@@ -42,14 +43,15 @@ construida sobre **PostgreSQL 16**.
 La migración inicial (`backend/db/migrations/0001_init.up.sql`) define las 4
 tablas del dominio con las siguientes claves, restricciones e índices:
 
-| Tabla | Clave Primaria (PK) | Claves Foráneas (FK) y Restricciones | Columnas `JSONB` | Índices compuestos (multi-tenant) |
-| --- | --- | --- | --- | --- |
-| `tenant_features` | `tenant_id TEXT` | — | `features` (features LPS por tenant) | PK por `tenant_id` |
-| `form_templates` | `id UUID` | — | — | `(tenant_id, created_at DESC)` |
-| `form_versions` | `id UUID` | `template_id` → `form_templates(id)` (`ON DELETE RESTRICT`)<br>`UNIQUE (tenant_id, template_id, version)`<br>`CHECK (version >= 1)`<br>`CHECK (status IN ('draft', 'published', 'archived'))` | `schema` (JSON Schema 2020-12)<br>`ui_schema` | `(tenant_id, template_id, status)` |
-| `submissions` | `id UUID` | `template_id` → `form_templates(id)` (`ON DELETE RESTRICT`)<br>`version_id` → `form_versions(id)` (`ON DELETE RESTRICT`)<br>`CHECK (status IN ('draft', 'submitted'))` | `answers` (respuestas enviadas/borrador) | `(tenant_id, template_id, created_at DESC)`<br>`(tenant_id, subject_type, subject_id)` parcial |
+| Tabla             | Clave Primaria (PK) | Claves Foráneas (FK) y Restricciones                                                                                                                                                          | Columnas `JSONB`                              | Índices compuestos (multi-tenant)                                                              |
+| ----------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `tenant_features` | `tenant_id TEXT`    | —                                                                                                                                                                                             | `features` (features LPS por tenant)          | PK por `tenant_id`                                                                             |
+| `form_templates`  | `id UUID`           | —                                                                                                                                                                                             | —                                             | `(tenant_id, created_at DESC)`                                                                 |
+| `form_versions`   | `id UUID`           | `template_id` → `form_templates(id)` (`ON DELETE RESTRICT`)<br>`UNIQUE (tenant_id, template_id, version)`<br>`CHECK (version >= 1)`<br>`CHECK (status IN ('draft', 'published', 'archived'))` | `schema` (JSON Schema 2020-12)<br>`ui_schema` | `(tenant_id, template_id, status)`                                                             |
+| `submissions`     | `id UUID`           | `template_id` → `form_templates(id)` (`ON DELETE RESTRICT`)<br>`version_id` → `form_versions(id)` (`ON DELETE RESTRICT`)<br>`CHECK (status IN ('draft', 'submitted'))`                        | `answers` (respuestas enviadas/borrador)      | `(tenant_id, template_id, created_at DESC)`<br>`(tenant_id, subject_type, subject_id)` parcial |
 
 Justificación de las restricciones clave:
+
 - **`ON DELETE RESTRICT` en todas las FKs:** impide el borrado físico en cascada
   de plantillas o versiones que tengan historial asociado, protegiendo las
   reglas de inmutabilidad (`RN-FOR-01`, `RN-FOR-04`).

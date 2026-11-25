@@ -1,16 +1,17 @@
 # Preguntas abiertas
 
-Dudas sobre integración con otros paquetes de trabajo (PT) de la LPS o sobre
-el alcance de este MS (PT4). Cada `TODO(integracion)` del código debe tener una
-entrada aquí.
+Dudas sobre integración con otros servicios de la LPS o sobre el alcance de este
+servicio. Cada `TODO(integracion)` del código debe tener una entrada aquí.
 
-| # | Tema | Pregunta | Con quién | Afecta a | Estado |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Base de datos | ¿Se confirma MongoDB como base de datos única (lineamientos) o se adopta PostgreSQL? | Equipo docente / Equipo PT4 | Backend, `docker-compose`, CI | Resuelta: se adopta PostgreSQL + `JSONB` (ver `ADR-0003`) |
-| 2 | Identidad | Formato real del JWT de PT6: algoritmo, claims, cómo viaja el tenant, cómo se obtiene la clave pública. | PT6 Identity Provider | `ports.Authenticator` | Abierta |
-| 3 | Permisos | Nombres reales de roles/permisos (hoy provisionales: `forms:read`, `forms:design`, `forms:fill`, `forms:review`). | PT6 Identity Provider | Backend, frontend | Abierta |
-| 4 | Archivos | API de PT7 para subir/verificar adjuntos y firmas; qué identificador devuelve. | PT7 Bóveda Documental | `ports.FileStore` | Abierta |
-| 5 | Auditoría | Formato y transporte de los logs que recibe PT8 (HTTP, broker, campos obligatorios). | PT8 Central Auditoría | `ports.EventPublisher`, `contracts/events/` | Abierta |
-| 6 | Límite con PT3 | PT3 "crea, versiona y almacena estructuras de documentos". ¿Dónde termina una plantilla de documento y empieza una definición de formulario? ¿Debemos consumir algo de PT3? | PT3 Gestor de Plantillas | Alcance | Abierta |
-| 7 | Reportes | ¿PT1 generará PDF/Excel de respuestas de formularios? ¿Qué endpoint/forma de datos necesita de nosotros? | PT1 Motor de Reportes | Contrato | Abierta |
-| 8 | Calidad | Servidor, token y umbrales de SonarQube del curso. | Equipo docente | CI | Abierta |
+| #   | Tema           | Pregunta                                                                                               | Con quién                    | Afecta a                 | Estado                                                                                                                                      |
+| --- | -------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Base de datos  | ¿MongoDB o PostgreSQL?                                                                                 | Equipo docente               | Todo                     | Resuelta: PostgreSQL 17.11 (DAS §3, `ADR-0004`)                                                                                             |
+| 2   | Identidad      | Formato del JWT y cómo validarlo                                                                       | usuarios-roles (PT6)         | Autenticación            | Resuelta: RS256, claims `sub`, `roles`, `permisos`, `iss=pingeso-identidad`, `aud=pingeso`; validación con JWKS en `/.well-known/jwks.json` |
+| 3   | Permisos       | ¿Qué permisos declara este servicio?                                                                   | usuarios-roles (PT6), equipo | API, frontend            | Propuesta: `formularios:administrar`, `respuestas:operar`, `respuestas:administrar`. Falta registrarlos en el catálogo de roles de PT6      |
+| 4   | Componentes    | Nombre oficial del servicio en `PINGESO-CIVIL`, número N (puertos `51N0`/`51N1`), dependencias y mocks | Documento de componentes     | Repo, Compose, README    | Abierta: se asume `formularios` y N = 4                                                                                                     |
+| 5   | Multi-tenant   | El JWT no trae tenant. ¿Confirmamos una instancia por cliente?                                         | Equipo docente               | Modelo de datos          | Asumida: sin tenant (`ADR-0004`)                                                                                                            |
+| 6   | Archivos       | API de la Bóveda Documental (PT7) para adjuntos y firmas                                               | PT7                          | Campos `archivo`/`firma` | Abierta                                                                                                                                     |
+| 7   | Límite con PT3 | ¿Dónde termina una plantilla de documento (PT3) y empieza una definición de formulario?                | PT3                          | Alcance                  | Abierta                                                                                                                                     |
+| 8   | Reportes       | ¿Qué necesita PT1 de nosotros para generar PDF/Excel de respuestas?                                    | PT1                          | Contrato                 | Abierta                                                                                                                                     |
+| 9   | Toolchain Go   | ¿Se aprueba `go1.26.11` en vez de `go1.26.5` (vulnerabilidades de la biblioteca estándar)?             | Jefe de proyecto             | `go.mod`, Dockerfiles    | Abierta                                                                                                                                     |
+| 10  | SonarQube      | Proyecto, `SONAR_TOKEN` y `SONAR_HOST_URL` en el repo de la organización                               | Ayudante                     | CI                       | Abierta (tras el traspaso)                                                                                                                  |
