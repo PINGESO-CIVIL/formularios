@@ -5,16 +5,16 @@
 
 Un formulario versionado se describe con dos documentos:
 
-| Documento | Estándar | Responsabilidad |
-| --- | --- | --- |
-| `schema` | JSON Schema 2020-12 | Estructura y validación de los datos (la que vale es la del servidor) |
-| `uiSchema` | Propio (este documento) | Orden, secciones, widgets, condiciones de visibilidad |
+| Documento  | Estándar                | Responsabilidad                                                       |
+| ---------- | ----------------------- | --------------------------------------------------------------------- |
+| `schema`   | JSON Schema 2020-12     | Estructura y validación de los datos (la que vale es la del servidor) |
+| `uiSchema` | Propio (este documento) | Orden, secciones, widgets, condiciones de visibilidad                 |
 
 ## Formatos personalizados
 
-| Formato | Descripción |
-| --- | --- |
-| `rut` | RUT chileno con dígito verificador |
+| Formato | Descripción                        |
+| ------- | ---------------------------------- |
+| `rut`   | RUT chileno con dígito verificador |
 
 ## Pendiente de definir
 
