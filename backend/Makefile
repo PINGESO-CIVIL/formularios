@@ -13,8 +13,9 @@ MIGRATIONS_DIR := db/migrations
 GOLANGCI_LINT ?= golangci-lint
 SQLC ?= sqlc
 MIGRATE ?= migrate
+TRIVY ?= trivy
 
-.PHONY: run worker build test test-int lint sqlc migrate-up migrate-down migrate-new check tools tidy
+.PHONY: run worker build test test-int lint trivy sqlc migrate-up migrate-down migrate-new check tools tidy
 
 run: ## API en modo dev (requiere docker compose up -d)
 	APP_ENV=$${APP_ENV:-dev} go run ./cmd/api
@@ -26,14 +27,17 @@ build:
 	CGO_ENABLED=0 go build -o bin/api ./cmd/api
 	CGO_ENABLED=0 go build -o bin/worker ./cmd/worker
 
-test: ## Pruebas unitarias
-	go test -race ./...
+test: ## Pruebas unitarias + coverage.out
+	go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
 test-int: ## Pruebas de integración (Postgres en contenedor vía testcontainers)
 	go test -race -tags integration ./test/integration/...
 
 lint:
 	$(GOLANGCI_LINT) run ./...
+
+trivy: ## Escaneo de vulnerabilidades en dependencias y Dockerfile
+	$(TRIVY) fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 .
 
 sqlc:
 	$(SQLC) generate
