@@ -1,141 +1,136 @@
-openapi: 3.1.0
+components:
+  schemas:
+    ErrorDetail:
+      additionalProperties: false
+      properties:
+        location:
+          description: Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
+          type: string
+        message:
+          description: Error message text
+          type: string
+        value:
+          description: The value at the given location
+      type: object
+    ErrorModel:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ErrorModel.json
+          format: uri
+          readOnly: true
+          type: string
+        detail:
+          description: A human-readable explanation specific to this occurrence of the problem.
+          examples:
+            - Property foo is required but is missing.
+          type: string
+        errors:
+          description: Optional list of individual error details
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+          type:
+            - array
+            - "null"
+        instance:
+          description: A URI reference that identifies the specific occurrence of the problem.
+          examples:
+            - https://example.com/error-log/abc123
+          format: uri
+          type: string
+        status:
+          description: HTTP status code
+          examples:
+            - 400
+          format: int64
+          type: integer
+        title:
+          description: A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+          examples:
+            - Bad Request
+          type: string
+        type:
+          default: about:blank
+          description: A URI reference to human-readable documentation for the error.
+          examples:
+            - https://example.com/errors/example
+          format: uri
+          type: string
+      type: object
+    SaludRespuestaBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SaludRespuestaBody.json
+          format: uri
+          readOnly: true
+          type: string
+        estado:
+          description: Estado del servicio
+          examples:
+            - ok
+          type: string
+      required:
+        - estado
+      type: object
 info:
-  title: ms-formularios
-  version: 0.0.0
-  description: |
-    API REST del microservicio de Formularios de la LPS.
-    Fuente de verdad para backend y frontend: todo cambio de API parte aquí.
+  description: |-
+    Servicio de formularios de la LPS (PT 4): definición de formularios dinámicos, versiones publicadas y recolección de respuestas.
 
-    Fase 0: solo endpoints operacionales. Los recursos de negocio
-    (plantillas, versiones, respuestas) se agregan con su requerimiento RF-FOR-xx.
-    Los identificadores de recursos utilizan formato UUID (`format: uuid`, ver ADR-0003).
-servers:
-  - url: http://localhost:8080
-    description: Desarrollo local
+    Cada operación declara en `x-permiso` lo que exige: `publico`, `autenticado` o un permiso `<recurso>:<accion>`. Sin token válido se responde 401; con token pero sin permiso, 403.
 
-tags:
-  - name: operacion
-    description: Salud y métricas del servicio
-
+    Los tokens los emite el servicio usuarios-roles y se validan con su JWKS (`AUTH_JWKS_URL`).
+  title: API Formularios
+  version: 0.1.0
+openapi: 3.1.0
 paths:
   /healthz:
     get:
-      tags: [operacion]
-      operationId: getHealth
-      summary: El proceso está vivo
-      security: []
+      operationId: verificarVida
       responses:
         "200":
-          description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                $ref: "#/components/schemas/SaludRespuestaBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Indica si el proceso está vivo
+      tags:
+        - Salud
+      x-permiso: publico
   /readyz:
     get:
-      tags: [operacion]
-      operationId: getReadiness
-      summary: El servicio puede atender tráfico (dependencias disponibles)
-      security: []
+      operationId: verificarDisponibilidad
       responses:
         "200":
-          description: Listo
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                $ref: "#/components/schemas/SaludRespuestaBody"
+          description: OK
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
         "503":
-          description: No listo
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
-  /metrics:
-    get:
-      tags: [operacion]
-      operationId: getMetrics
-      summary: Métricas en formato Prometheus
-      security: []
-      responses:
-        "200":
-          description: Métricas
-          content:
-            text/plain:
-              schema:
-                type: string
-
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: |
-        Provisional. En fase 0 el backend usa el stub `devauth` (JWT HS256 local
-        o headers X-Dev-*). El formato real lo define el MS de usuarios/roles.
-
-  parameters:
-    CorrelationId:
-      name: X-Correlation-Id
-      in: header
-      required: false
-      schema:
-        type: string
-
-  schemas:
-    HealthStatus:
-      type: object
-      required: [status]
-      properties:
-        status:
-          type: string
-          enum: [ok, unavailable]
-        checks:
-          type: object
-          additionalProperties:
-            type: string
-
-    Problem:
-      description: Error según RFC 9457 (application/problem+json).
-      type: object
-      required: [type, title, status]
-      properties:
-        type:
-          type: string
-          format: uri-reference
-        title:
-          type: string
-        status:
-          type: integer
-        detail:
-          type: string
-        instance:
-          type: string
-        errors:
-          type: array
-          items:
-            $ref: "#/components/schemas/FieldError"
-
-    FieldError:
-      type: object
-      required: [field, code, message]
-      properties:
-        field:
-          type: string
-          description: Ruta del campo (JSON Pointer o nombre de propiedad).
-        code:
-          type: string
-        message:
-          type: string
-          description: Mensaje en español para el usuario.
-
-  responses:
-    Problem:
-      description: Error
-      content:
-        application/problem+json:
-          schema:
-            $ref: "#/components/schemas/Problem"
-
-security:
-  - bearerAuth: []
+                $ref: "#/components/schemas/ErrorModel"
+          description: Service Unavailable
+      summary: "Indica si el servicio puede atender: responde 200 solo si PostgreSQL contesta"
+      tags:
+        - Salud
+      x-permiso: publico

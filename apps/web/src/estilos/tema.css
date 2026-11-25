@@ -1,0 +1,40 @@
+/*
+ * Tema de los microcomponentes de formularios.
+ *
+ * Todo lo visual sale de estas variables CSS, con el prefijo --formularios-.
+ * Cada producto que componga los microcomponentes puede redefinirlas en su propia
+ * hoja (por ejemplo en :root o en el contenedor donde los monta) para aplicar su
+ * marca, sin tocar este paquete. Tailwind las expone como clases
+ * (bg-primario, text-texto, rounded-formularios, etc.) mediante @theme inline.
+ */
+@import "tailwindcss";
+
+:root {
+  --formularios-primario: oklch(0.45 0.16 260);
+  --formularios-primario-contraste: oklch(0.99 0 0);
+  --formularios-fondo: oklch(0.99 0 0);
+  --formularios-superficie: oklch(0.97 0.005 260);
+  --formularios-texto: oklch(0.22 0.02 260);
+  --formularios-texto-suave: oklch(0.48 0.02 260);
+  --formularios-borde: oklch(0.88 0.01 260);
+  --formularios-error: oklch(0.55 0.2 27);
+  --formularios-exito: oklch(0.55 0.14 150);
+  --formularios-radio: 0.5rem;
+  --formularios-espaciado: 1rem;
+  --formularios-fuente: ui-sans-serif, system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-primario: var(--formularios-primario);
+  --color-primario-contraste: var(--formularios-primario-contraste);
+  --color-fondo: var(--formularios-fondo);
+  --color-superficie: var(--formularios-superficie);
+  --color-texto: var(--formularios-texto);
+  --color-texto-suave: var(--formularios-texto-suave);
+  --color-borde: var(--formularios-borde);
+  --color-error: var(--formularios-error);
+  --color-exito: var(--formularios-exito);
+  --radius-formularios: var(--formularios-radio);
+  --spacing-formularios: var(--formularios-espaciado);
+  --font-formularios: var(--formularios-fuente);
+}

@@ -1,0 +1,9 @@
+# Generados: no se formatean a mano
+contracts/openapi.yaml
+contracts/externos/
+apps/web/src/api/esquema.d.ts
+apps/web/public/mockServiceWorker.js
+pnpm-lock.yaml
+coverage.out
+# Material del curso, se conserva tal cual
+docs/referencia/

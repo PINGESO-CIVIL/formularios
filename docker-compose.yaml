@@ -1,0 +1,65 @@
+# Entorno local completo (DAS §4): postgres -> migrate -> backend -> frontend.
+# Puertos del servicio N = 4 (pendiente de confirmar con el documento de componentes):
+# web en 5140 y api en 5141, publicados solo en 127.0.0.1.
+name: formularios
+
+services:
+  postgres:
+    image: postgres:17.11@sha256:ff87138949ad9a46f32ff23bd6852b52ce024a13dffe9b4087be98292cdd3b4f
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?falta POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:?falta POSTGRES_DB en .env}
+    volumes:
+      - datos_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.migrate
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?falta DATABASE_URL en .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        VERSION: dev
+    environment:
+      API_PORT: ${API_PORT:?falta API_PORT en .env}
+      API_ENV: ${API_ENV:?falta API_ENV en .env}
+      DATABASE_URL: ${DATABASE_URL:?falta DATABASE_URL en .env}
+      AUTH_JWKS_URL: ${AUTH_JWKS_URL:?falta AUTH_JWKS_URL en .env}
+      FRONTEND_URL: ${FRONTEND_URL:?falta FRONTEND_URL en .env}
+      TZ: ${TZ:?falta TZ en .env}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:5141:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "127.0.0.1:5140:8080"
+    depends_on:
+      - backend
+
+volumes:
+  datos_postgres:

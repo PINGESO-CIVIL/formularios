@@ -1,0 +1,31 @@
+{
+  "name": "@pingeso-civil/formularios-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5140",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:cobertura": "vitest run --coverage",
+    "codegen": "openapi-typescript ../../contracts/openapi.yaml -o src/api/esquema.d.ts"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.15.2",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/react": "19.3.1",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.0.4",
+    "@vitest/coverage-v8": "4.1.10",
+    "openapi-typescript": "7.13.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "4.1.10"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "formularios",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": "22.22.0"
+  },
+  "scripts": {
+    "codegen": "pnpm codegen:api && pnpm --filter @pingeso-civil/formularios-ui codegen",
+    "codegen:api": "cd apps/api && go run ./cmd/api openapi ../../contracts/openapi.yaml",
+    "verify": "prettier --check . && oxlint --deny-warnings --no-error-on-unmatched-pattern && pnpm verify:api",
+    "verify:api": "sh scripts/verificar-go.sh",
+    "typecheck": "pnpm --filter @pingeso-civil/formularios-ui typecheck",
+    "test": "pnpm --filter @pingeso-civil/formularios-ui test",
+    "test:cobertura": "pnpm --filter @pingeso-civil/formularios-ui test:cobertura",
+    "test:api": "cd apps/api && go test ./... && cd ../web/servidor && go test ./...",
+    "test:api:cobertura": "cd apps/api && go test -coverprofile=../../coverage.out ./... && cd ../web/servidor && go test -coverprofile=../../../coverage-servidor.out ./..."
+  },
+  "devDependencies": {
+    "lefthook": "2.1.10",
+    "oxlint": "1.75.0",
+    "prettier": "3.9.6",
+    "prettier-plugin-tailwindcss": "0.8.1"
+  }
+}
