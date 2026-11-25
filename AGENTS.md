@@ -1,238 +1,253 @@
-# AGENTS.md — ms-formularios
+# AGENTS.md — formularios
 
 Guía para agentes de código (y personas) que trabajan en este repositorio.
-Las carpetas `backend/` y `frontend/` tienen su propio `AGENTS.md` con reglas
-específicas; cuando trabajes dentro de una de ellas, ese archivo manda sobre este
-en lo técnico, pero **nunca contradice los lineamientos del curso**.
+`apps/api/` y `apps/web/` tienen su propio `AGENTS.md` con reglas específicas;
+cuando trabajes dentro de una de ellas, ese archivo manda en lo técnico, pero
+**nunca contradice el DAS**.
 
-> **Fuente de verdad técnica:** [`docs/referencia/lineamientos.pdf`](docs/referencia/lineamientos.pdf)
-> ("Lineamientos Técnicos y Plan Incremental"). Si algo de este repo choca con
-> ese documento, gana el documento y se corrige el repo.
-> **Fuente de verdad funcional:** [`docs/requerimientos.md`](docs/requerimientos.md)
-> (IDs `RF-FOR-xx`, `RNF-FOR-xx`, `RN-FOR-xx`).
+## Fuentes de verdad (en orden de prioridad)
+
+1. **DAS — Desarrollo de Microservicios** ([`docs/referencia/das.md`](docs/referencia/das.md)):
+   stack, versiones exactas, estructura, contenedores, contrato, seguridad y pipeline.
+   **Lo que el DAS marca como obligatorio no se discute** y lo verifica el pipeline.
+2. **Hitos 1 y 2** ([`docs/referencia/hitos-1-y-2.md`](docs/referencia/hitos-1-y-2.md)):
+   checklist y formato de entrega.
+3. **Documento de componentes de la sección** (pendiente de incorporar): nombre del
+   servicio, número N, dependencias y mocks.
+4. Lineamientos iniciales ([`docs/referencia/lineamientos.pdf`](docs/referencia/lineamientos.pdf)):
+   solo como contexto; donde chocan con el DAS, gana el DAS (ver `ADR-0004`).
+5. Requerimientos funcionales: [`docs/requerimientos.md`](docs/requerimientos.md) (`RF-FOR-xx`, `RN-FOR-xx`).
 
 ## Qué es este proyecto
 
-`ms-formularios` es el **Paquete de Trabajo 4 (PT4): Motor de Formularios** de
-la Línea de Productos de Software (LPS) del curso Proyecto de Ingeniería en
-Software (PINGESO, USACH).
+Servicio **formularios** (PT4, Motor de Formularios) de la Línea de Productos de
+Software del curso PINGESO (USACH).
 
-**Objetivo (lineamientos):** API para crear formularios dinámicos y recolectar
-las respuestas de los usuarios.
+**Objetivo:** API y microcomponentes para crear formularios dinámicos,
+versionarlos y recolectar las respuestas de los usuarios.
 
 Debe ser **lo más general posible**: un motor reutilizable por cualquier
-producto derivado de la LPS (contratos, checklists, fichas, encuestas,
-consentimientos, autoevaluaciones…), sin conocer el negocio de ninguno. Cada
-cliente/producto es un *tenant*; sus diferencias se expresan como
-configuración (features por tenant, tipos de campo registrados, esquema del
-formulario), nunca como código específico.
+producto que componga la base común (contratos, checklists, fichas, encuestas,
+consentimientos…), sin conocer el negocio de ninguno. Las diferencias entre
+productos se expresan como **configuración** (esquema del formulario, widgets
+registrados, tema visual), nunca como código específico.
 
-### Qué SÍ hace ms-formularios
+Cada cliente despliega **su propia instancia** del servicio (DAS §8: el ambiente
+productivo lo define cada grupo cliente). Por eso el servicio **no es
+multi-tenant**: el JWT de identidad no trae tenant (ver `ADR-0004`).
 
-- Definir formularios (estructura dinámica en JSON Schema + UI schema).
-- Versionarlos: borrador → publicado → archivado. Una versión publicada es inmutable.
+### Qué SÍ hace
+
+- Definir formularios: estructura dinámica en JSON Schema + `esquema_ui`.
+- Versionarlos: borrador → publicada. Una versión publicada es inmutable.
 - Recibir respuestas sobre una versión publicada, validarlas en el servidor y
-  guardarlas (borrador → enviada). Una respuesta enviada es inmutable.
-- Consultar y listar formularios, versiones y respuestas, filtradas por tenant.
-- Emitir un evento/log estructurado por cada acción relevante (para PT8).
+  guardarlas: borrador → enviada. Una respuesta enviada es inmutable.
+- Registrar en su **tabla de auditoría** quién, qué y cuándo de cada cambio (DAS §8).
+- Entregar microcomponentes React (renderizador, listados, editor) moldeables
+  visualmente por cada producto.
 
-### Qué NO hace (es de otro paquete de trabajo)
+### Qué NO hace (dueño único por dato, DAS §2)
 
-| No hacemos | Lo hace | Cómo nos relacionamos |
-| --- | --- | --- |
-| Login, usuarios, roles, emisión de JWT | **PT6 Identity Provider** | Solo **validamos** el JWT y leemos sus claims |
-| Guardar archivos, fotos, firmas digitales de documentos | **PT7 Bóveda Documental** | Guardamos solo el `file_id` que devuelve PT7 |
-| Bitácora / historial / dashboard de auditoría | **PT8 Central Auditoría** | Le enviamos logs estructurados de eventos |
-| Generar PDF o Excel de una respuesta | **PT1 Motor de Reportes** | PT1 consume nuestros datos por API |
-| Plantillas de **documentos** (estructuras de reportes/documentos) | **PT3 Gestor de Plantillas** | Ninguna en fase 1. Nosotros solo manejamos definiciones de **formularios** |
-| Enviar correos | **PT10 Gateway de Notificaciones** | No lo llamamos en fase 1 |
-| Reservas, OCR, ETL masivo | PT9, PT5, PT2 | Posibles consumidores de nuestra API; no construimos nada para ellos |
+| No hacemos                             | Dueño                            | Cómo nos relacionamos                                                |
+| -------------------------------------- | -------------------------------- | -------------------------------------------------------------------- |
+| Login, usuarios, roles, emisión de JWT | **usuarios-roles** (PT6)         | Validamos su JWT con `AUTH_JWKS_URL`. Guardamos solo el `sub` (UUID) |
+| Guardar archivos, fotos o firmas       | Bóveda Documental (PT7)          | Guardaremos solo el identificador que devuelva                       |
+| Generar PDF o Excel                    | Motor de Reportes (PT1)          | Nos consume por API                                                  |
+| Plantillas de **documentos**           | Gestor de Plantillas (PT3)       | Ninguna; nosotros solo manejamos **formularios**                     |
+| Enviar correos                         | Gateway de Notificaciones (PT10) | No lo llamamos                                                       |
 
-Si una tarea empieza a parecerse a algo de la columna "Lo hace", **detente y
-pregunta**: no invadas otro MS.
+Si una tarea empieza a parecerse a algo de la columna "Dueño", **detente y
+pregunta**. Nunca nos conectamos a la base de otro servicio ni escribimos sus datos.
 
-## Ecosistema LPS (resumen de lineamientos)
+## Dependencias
 
-| PT | Grupo | Objetivo |
-| --- | --- | --- |
-| PT1 | Motor de Reportes | Recibe datos crudos + ID de plantilla y devuelve PDF/Excel |
-| PT2 | Pipeline de Información | ETL: recibir, limpiar, validar e insertar datos masivos |
-| PT3 | Gestor de Plantillas | CRUD para crear, versionar y almacenar estructuras de documentos |
-| **PT4** | **Motor de Formularios (nosotros)** | **API para crear formularios dinámicos y recolectar respuestas** |
-| PT5 | Extractor OCR | Imagen digitalizada → texto OCR → JSON |
-| PT6 | Identity Provider | Autenticación, login, roles y emisión de JWT |
-| PT7 | Bóveda Documental | Recibe archivos, los almacena seguros, firma y guarda metadata |
-| PT8 | Central Auditoría | Recibe logs estructurados de eventos y muestra dashboard |
-| PT9 | Motor de Agendamiento | Reservas, colisiones, bloqueo de fechas |
-| PT10 | Gateway de Notificaciones | Recibe (asunto, cuerpo) y envía email |
+| Servicio       | Para qué                       | Variable                                                       | Contrato                                 | Mientras no tenga lógica                                                                  |
+| -------------- | ------------------------------ | -------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| usuarios-roles | Validar JWT (RS256) y permisos | `AUTH_JWKS_URL` (y `USUARIOS_ROLES_URL` si se necesitan datos) | `contracts/externos/usuarios-roles.yaml` | Ya emite tokens reales de prueba: `POST /api/dev/tokens` (ver su `docs/jwt-de-prueba.md`) |
 
-## Dependencias de ms-formularios
+Las demás dependencias se agregan cuando el documento de componentes las fije.
+Reglas (DAS §2):
 
-Dependencia oficial según lineamientos: **PT6**. Las demás son dependencias que
-el equipo identificó por la naturaleza de un MS de formularios.
+- REST síncrono con JSON contra el contrato publicado del otro servicio.
+- Llamadas por `<SERVICIO>_URL`, reenviando el JWT y el `X-Request-Id`.
+- Timeout explícito en todo cliente HTTP (5 s). Un servicio caído devuelve un error claro.
+- El contrato del proveedor se copia a `contracts/externos/<servicio>.yaml` y el
+  cliente se genera desde ahí (oapi-codegen en Go, openapi-typescript en el front).
+- Mientras el proveedor no tenga lógica: `prism mock` o handlers MSW.
+- No inventes comportamiento de otro servicio: marca `// TODO(integracion): ...`
+  y anótalo en `docs/preguntas-abiertas.md`.
 
-| Dependencia | Tipo | Puerto (backend) | Mock en fase 1 |
-| --- | --- | --- | --- |
-| **PT6 Identity Provider** (oficial) | Entrante: valida cada petición | `ports.Authenticator` | Token JWT quemado / simulación de ID-token válido de usuario emisor |
-| PT8 Central Auditoría | Saliente: un log por evento | `ports.EventPublisher` | Imprimir el evento en consola (JSON) |
-| PT7 Bóveda Documental | Saliente: campos archivo/firma | `ports.FileStore` | `file_id` falso; se asume que el archivo existe y está autenticado |
-| PT3 Gestor de Plantillas | Límite a coordinar | — | — (ver `docs/preguntas-abiertas.md`) |
-| PT1, PT2, PT5, PT9 | Consumidores potenciales | — | — |
+## Stack (DAS §3, versiones exactas, sin rangos)
 
-Reglas:
+| Capa                | Tecnología                                                                                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API                 | Go 1.26 + **Huma v2.34.1** (HTTP + OpenAPI 3.1 generado desde los structs)                                                                                      |
+| Base de datos       | **PostgreSQL 17.11**, `pgx/v5` v5.10.0, **goose v3.24.1** (migraciones), **sqlc v1.29.0** (queries)                                                             |
+| JWT                 | `golang-jwt/jwt/v5` v5.3.1 + `MicahParks/keyfunc/v3` v3.9.1                                                                                                     |
+| Pruebas             | `testing` + `testcontainers-go/modules/postgres` v0.43.0 (e2e con PostgreSQL real)                                                                              |
+| Frontend            | **React 19.2.8**, TypeScript 6.0.3, Vite 8.1.5, Tailwind 4.3.3, shadcn (`@base-ui/react`), react-query, react-hook-form, openapi-fetch, MSW, Vitest, Playwright |
+| Herramientas        | Node 22.22.0, pnpm 10.13.1, oxlint, Prettier, lefthook, gitleaks                                                                                                |
+| Calidad y seguridad | SonarQube, Trivy, govulncheck, Hadolint, Dockle, oasdiff                                                                                                        |
 
-- Toda dependencia externa es una **interfaz (puerto)** con un **mock local**.
-  Integrar con el MS real = agregar un adaptador nuevo, sin tocar el dominio.
-- **No inventes** el comportamiento de otro MS (formato real del token, nombres
-  de roles, URL, formato de log de PT8). Déjalo en el adaptador, marca
-  `// TODO(integracion): ...` y anótalo en `docs/preguntas-abiertas.md`.
-- Entidades de negocio de los productos (cliente, vehículo, paciente…) se
-  referencian como `subject_type` + `subject_id` opacos; nunca se validan
-  contra otro servicio.
+Cambiar una pieza del stack o subir una versión es **un PR propio**, nunca dentro
+de un PR de funcionalidad. Las versiones de este repo deben coincidir con el DAS;
+toda desviación queda registrada en un ADR.
 
-## Stack oficial (obligatorio por lineamientos)
+## Estructura del repositorio (DAS §3)
 
-| Capa | Tecnología | Versión |
-| --- | --- | --- |
-| Contrato API | OpenAPI (YAML) + Swagger UI | **3.1.0** |
-| Backend | Go | **1.23** |
-| Frontend | Vue.js, Composition API | **3.5** |
-| Base de datos | **PostgreSQL** (`JSONB` para esquemas y respuestas dinámicas) | **16** |
-| Análisis estático | **SonarQube** en el pipeline (bugs, code smells, cobertura) | — |
-| Vulnerabilidades | **Trivy** (contenedores y dependencias Go/Vue) | — |
+```
+formularios/
+├── apps/
+│   ├── api/
+│   │   ├── cmd/api/             # main: arranque, config, señales, subcomando openapi
+│   │   ├── internal/api/        # handlers Huma + structs del contrato
+│   │   ├── internal/service/    # reglas de negocio, sin HTTP ni SQL
+│   │   ├── internal/store/      # acceso a datos (memoria en Hito 1, PostgreSQL en Hito 2)
+│   │   ├── internal/repository/ # generado por sqlc, no editar
+│   │   ├── db/migrations/       # goose
+│   │   ├── db/queries/          # SQL para sqlc
+│   │   ├── e2e/                 # e2e + testdata/*.golden.md
+│   │   ├── Dockerfile
+│   │   └── Dockerfile.migrate
+│   └── web/                     # microcomponentes React + app de desarrollo con MSW
+├── contracts/
+│   ├── openapi.yaml             # GENERADO con pnpm codegen y commiteado
+│   ├── form-schema.md           # formato del esquema de formulario
+│   └── externos/                # contratos de los servicios de los que dependemos
+├── docs/
+│   ├── modos-de-falla.md        # obligatorio: se escribe antes de programar
+│   ├── preguntas-abiertas.md
+│   ├── adr/
+│   └── referencia/              # DAS, hitos, lineamientos (material del curso)
+├── docker-compose.yaml
+├── .env.example
+├── lefthook.yml
+└── .github/workflows/ci.yml
+```
 
-> Decisión de base de datos documentada en [`docs/adr/ADR-0003-persistencia-postgresql-jsonb.md`](docs/adr/ADR-0003-persistencia-postgresql-jsonb.md):
-> se utiliza PostgreSQL 16 (`pgx/v5`, `sqlc`, `golang-migrate`) con columnas `JSONB` para estructuras dinámicas.
+## Reglas de arquitectura
 
-## Reglas de arquitectura (lineamientos)
-
-1. **API-First.** El contrato `contracts/openapi.yaml` se publica **antes** de
-   programar. Cualquier cambio de API se hace primero en el contrato y luego en
-   backend y frontend. Un PR que cambia un endpoint sin tocar el contrato se rechaza.
-2. **Clean Architecture: Handlers → Services → Repositories.**
-   - *Handlers*: HTTP; parsean, validan forma, llaman al service, traducen respuesta.
-   - *Services*: casos de uso y reglas de negocio.
-   - *Repositories*: acceso a PostgreSQL.
-   - El dominio no conoce HTTP ni PostgreSQL. (Ver `backend/AGENTS.md` para la
-     correspondencia con las carpetas.)
-3. **Frontends modulares.** Vistas y componentes aislados, fáciles de ensamblar
-   en el producto final de la LPS.
-4. **Mocks para trabajo paralelo.** Los grupos que dependen de nosotros deben
-   poder simular nuestras respuestas leyendo solo el contrato; nosotros hacemos
-   lo mismo con PT6/PT7/PT8.
+1. **API-first con Huma.** El contrato nace de los structs Go: primero structs y
+   handlers con datos simulados, después la lógica real. `pnpm codegen` genera
+   `contracts/openapi.yaml` y los tipos TypeScript; ambos se commitean. Nunca se
+   edita el `openapi.yaml` a mano.
+2. **Handler → Service → Store.** El handler solo traduce HTTP; el service no
+   conoce HTTP ni SQL; el store no tiene reglas de negocio. **Un handler que llama
+   al store se rechaza.**
+3. **Dueño único por dato y dependencias en un solo sentido**, sin ciclos.
+4. **Cambios incompatibles** del contrato los bloquea oasdiff. Si son necesarios,
+   se publica `/api/v2/...` y se avisa a los consumidores.
+5. **Microcomponentes** en el frontend (ver `apps/web/AGENTS.md`).
 
 ## Estándares
 
-### Contrato (OpenAPI)
+### Contrato y API
 
-- OpenAPI **3.1.0**, archivo `contracts/openapi.yaml`, documentado con Swagger UI.
-- El estilo sigue el ejemplo entregado por el equipo docente
-  ([`docs/referencia/swagger-ejemplo.yaml`](docs/referencia/swagger-ejemplo.yaml)).
-  Ese archivo es **solo un ejemplo de estilo** (gestor de tareas), no nuestro contrato.
-- Rutas versionadas con prefijo `/api/v1`, recursos en **español y plural**
-  (`/api/v1/formularios`, `/api/v1/formularios/{id}/versiones`, `/api/v1/respuestas`).
-- Campos JSON en **español y `snake_case`** (`fecha_creacion`, `tenant_id`).
-- Esquemas separados de entrada y salida: `XxxRequest` / `XxxResponse`
-  (la respuesta incluye lo enviado + campos autogenerados: `id`, `fecha_creacion`…).
-- IDs: **UUID** (`type: string`, `format: uuid`).
-- Fechas en ISO 8601 / RFC 3339, UTC (`format: date-time`).
-- Errores con el esquema estándar del ejemplo, reutilizado vía `components/responses`
-  (`BadRequest`, `NotFound`, `InternalServerError`, más `Unauthorized`, `Forbidden`, `Conflict`):
+- OpenAPI 3.1 generado por Huma. Documentación interactiva en `/api/docs` con
+  `API_ENV=dev` (y `test`); nunca en `prod`.
+- Rutas en **español y plural**, con prefijo `/api`: `/api/formularios`,
+  `/api/formularios/{id}/versiones`, `/api/respuestas`.
+- Campos JSON en español y `snake_case` (`creado_en`, `formulario_id`).
+- Identificadores expuestos: **UUID**.
+- **Toda entrada validada en el contrato** (tipos, `minLength`, `maxLength`,
+  `maximum`, `pattern`, `enum`). Huma rechaza lo inválido con 422 antes del service.
+- **Cada operación declara su permiso** en `x-permiso`: `publico`, `autenticado` o
+  `<recurso>:<accion>`. Sin token válido → 401; sin permiso → 403.
+  Permisos propuestos: `formularios:administrar`, `respuestas:operar`,
+  `respuestas:administrar` (se cargan como `permisos_extra` en los tokens de prueba).
+- Autorizar **por permiso, nunca por nombre de rol**.
+- Errores en **RFC 9457** (`application/problem+json`), sin trazas, SQL ni rutas internas.
+- `Idempotency-Key` en operaciones que cambian datos de otro servicio.
 
-  ```json
-  { "codigo": 400, "mensaje": "Datos de entrada inválidos.", "detalles": "El campo 'titulo' es obligatorio." }
-  ```
+### Datos
 
-  Para errores de validación de una respuesta de formulario se permite el campo
-  opcional `errores: [{ "campo": "...", "mensaje": "..." }]`. Mensajes en español.
-- Todo endpoint (salvo salud) exige `Authorization: Bearer <JWT de PT6>`.
-- Todo endpoint tiene `tags`, `summary`, ejemplos y todas sus respuestas de error.
+- Migraciones **goose** en `db/migrations/`. Una migración ya desplegada no se edita:
+  se crea otra.
+- Queries en `db/queries/`; `internal/repository/` lo genera sqlc y no se edita.
+- Fechas `timestamptz`, montos `bigint`, ids `uuid`.
+- La API **nunca migra al arrancar**: corre primero el contenedor `migrate`.
+- Inmutabilidad: una versión publicada y una respuesta enviada no se modifican ni
+  se borran físicamente.
+- Auditoría: toda operación que cambia datos de negocio escribe en la tabla
+  `auditoria` (quién, qué, cuándo), en la misma transacción.
 
-### Seguridad y datos
+### Configuración y secretos (DAS §5)
 
-- **Multi-tenant siempre.** Todo documento de negocio tiene `tenant_id` y toda
-  consulta filtra por él. El `tenant_id` sale del token, **nunca** del cuerpo.
-- **Inmutabilidad.** Una versión publicada y una respuesta enviada no se
-  modifican ni se borran físicamente (RN-FOR-01, RN-FOR-04).
-- **Sin bitácora propia.** El historial lo arma PT8 a partir de nuestros eventos.
-- **Datos sensibles.** No registres en logs el contenido de respuestas, RUT,
-  firmas ni tokens. Solo IDs.
-- **Sin lógica de un producto en el núcleo.** Nada de `if tenant == "x"`.
-- Secretos solo por variables de entorno; nunca en el repo.
+- Todo por variables de entorno, validadas al arrancar; el proceso termina si
+  falta una obligatoria. `.env.example` con valores `replace-with-*`.
+- Variables: `API_PORT` (8080), `API_ENV` (`dev|test|prod`), `DATABASE_URL`,
+  `AUTH_JWKS_URL`, `FRONTEND_URL`, `TZ` (`America/Santiago`), `<SERVICIO>_URL`.
+- Ningún secreto en el repo, la imagen, un `ARG` ni variables `VITE_*`.
+- Sesión en cookie `HttpOnly`/`Secure`/`SameSite=Lax`; **`localStorage` y
+  `sessionStorage` prohibidos** en el frontend.
 
-### Calidad
+### Observabilidad (DAS §8)
 
-- **SonarQube** corre en el pipeline; el PR no se mezcla si no pasa el quality gate.
-- **Trivy** escanea imagen Docker y dependencias (Go y pnpm); sin vulnerabilidades
-  `HIGH`/`CRITICAL` sin justificar.
-- Pruebas: caso feliz + al menos un caso de error por regla. Cobertura dentro del
-  umbral que defina el curso en SonarQube.
-- Lint y formato: `gofmt` + `golangci-lint` en backend; ESLint + Prettier en frontend.
+- Logs `log/slog` JSON a stdout con `servicio`, `version`, `request_id`, `metodo`,
+  `ruta`, `estado`, `duracion_ms`.
+- **Nunca** se loguean contraseñas, tokens, cookies, ni el cuerpo de requests o
+  el contenido de respuestas de formularios. Solo IDs.
+- `X-Request-Id` se propaga en las llamadas a otros servicios.
+- `/healthz` (vivo) y `/readyz` (200 solo si PostgreSQL contesta), sin autenticación.
 
-### Idioma
+### Calidad y seguridad (DAS §6 y §7)
 
-- Código Go/TS, identificadores, nombres de tablas y columnas SQL: **inglés**.
-- Contrato público (rutas y campos JSON), textos de UI, mensajes de error y
-  documentación: **español**.
-- Eventos en formato LPS en español: `formulario.creado`, `version.publicada`,
-  `respuesta.enviada`.
+- Pipeline `ci.yml` con jobs **`calidad`**, **`seguridad`** e **`imagen`**; los tres
+  son checks requeridos. Un PR que no pasa el pipeline no se integra.
+- Umbrales del Hito 2: SonarQube (código nuevo) 0 bugs, 0 vulnerabilidades, 100 %
+  hotspots revisados, duplicación < 3 %, cobertura ≥ 60 % (medida desde los e2e);
+  Trivy 0 HIGH/CRITICAL con corrección; Gitleaks 0 hallazgos.
+- Si el gate falla se corrige la causa: no se baja el umbral ni se excluyen archivos.
+- Excepciones de Trivy solo en `.trivyignore.yaml` con CVE, motivo y fecha, aprobadas.
 
-## Hitos (lineamientos)
+### Pruebas (DAS §9)
 
-| Hito | Fecha | Entregables |
-| --- | --- | --- |
-| Hito 0: Entorno y seguridad | (actual) | Repo oficial activo, Trivy integrado, SonarQube operativo |
-| **Hito 1, Fase 1: Implementación inicial** | **13 de noviembre** | **Contrato publicado y Swagger validado; endpoints respondiendo con datos simulados (mocks)**; revisión de arquitectura con nota |
-| Hito 2, Fase 2: Refinamiento y calidad | 4 de diciembre | Lógica real (cero mocks), persistencia en BD funcionando, umbrales de Trivy y SonarQube superados |
-| Fase 3: Producción y cierre | 21 dic / 4 ene / 11 ene | Derivación LPS (ensamblaje) · despliegue cloud por cliente · validación con clientes |
+- **Primero `docs/modos-de-falla.md`**: cada falla posible, qué la impide y cómo se verifica.
+- E2E como mecanismo principal: binario real de la API contra PostgreSQL real
+  (Testcontainers o `TEST_DATABASE_URL`), escenario de dificultad media o alta,
+  reporte determinista comparado con un golden en `e2e/testdata/`.
+- Antes de aceptar un e2e se rompe a propósito la protección y se confirma que falla.
+- Lógica con fechas probada también con `TZ=UTC` y `TZ=Pacific/Auckland`.
+- Matriz de acceso por permiso en `acceso_test.go`.
 
-**Foco actual: Hito 1.** Prioriza el contrato completo y validado, y endpoints
-que respondan con mocks coherentes con él. La lógica real y la persistencia
-son del Hito 2.
+### Idioma y formato (DAS §9)
 
-## Mapa del repositorio
+- **Identificadores y comentarios en español**, en Go y en TypeScript.
+- Prettier sin punto y coma, ancho 90; gofmt en Go. Lo aplica lefthook.
+- Dependencias JS en el `catalog` de `pnpm-workspace.yaml`, nunca sueltas.
 
-```
-.
-├── AGENTS.md                 # este archivo
-├── backend/                  # servicio Go (ver backend/AGENTS.md)
-├── frontend/                 # monorepo Vue (ver frontend/AGENTS.md)
-├── contracts/
-│   ├── openapi.yaml          # contrato REST: fuente de verdad para back y front
-│   ├── form-schema.md        # formato del esquema de formulario (JSON Schema + UI schema)
-│   └── events/               # JSON Schema de cada evento y del sobre estándar
-├── docs/
-│   ├── referencia/
-│   │   ├── lineamientos.pdf        # lineamientos técnicos del curso
-│   │   └── swagger-ejemplo.yaml    # ejemplo de estilo OpenAPI entregado por el curso
-│   ├── requerimientos.md
-│   ├── preguntas-abiertas.md
-│   └── adr/                  # decisiones de arquitectura (ADR-0001-....md)
-├── docker-compose.yml        # infraestructura local
-└── .github/workflows/        # CI (lint, pruebas, SonarQube, Trivy)
-```
+## Hitos
+
+| Hito                      | Fecha              | Se aprueba con                                                                                                                                     |
+| ------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Implementación inicial | **4 de diciembre** | Contrato publicado y validado, endpoints con datos simulados, Compose levanta todo, `docs/modos-de-falla.md`, revisión con nota de la arquitectura |
+| 2. Refinamiento y calidad | **4 de diciembre** | Lógica real, PostgreSQL, auditoría, autorización por permiso, e2e con golden, umbrales de SonarQube/Trivy/Gitleaks                                 |
+| Ensamblaje LPS            | 21 de diciembre    | APIs y microcomponentes listos para que cada grupo cliente los componga                                                                            |
+| Cierre                    | 11 de enero        | Validación con clientes                                                                                                                            |
+
+Entrega de cada hito: tag `hito-N` en `main` con pipeline verde → release con
+`openapi.yaml` (y SBOM en el Hito 2) → issue "Entrega Hito N" con la checklist.
+Los tags quedan protegidos.
 
 ## Flujo de trabajo
 
 1. **Plan → verificación → implementación.** Antes de cambios no triviales,
-   escribe un plan y valídalo con el equipo. Recién entonces implementa.
-2. **Nada sobre el repo sin OK.** Commits, push, amend, rebase o mover/borrar
-   archivos versionados requieren aprobación explícita de una persona del equipo.
-3. **Ramas:** `feat/RF-FOR-10-iniciar-respuesta`, `fix/...`, `docs/...`, `chore/...`.
-4. **Commits:** `tipo: mensaje corto y representativo`, con el ID si aplica.
-   Tipos: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`.
-   Ejemplo: `feat: iniciar respuesta sobre versión publicada (RF-FOR-10)`.
+   escribe un plan y valídalo con el equipo.
+2. **Nada sobre el repo sin OK.** Commits, push, amend, rebase, tags, releases o
+   mover/borrar archivos versionados requieren aprobación explícita del equipo.
+3. **Ramas:** `feat/<tema>`, `fix/<tema>`, `docs/<tema>`, `chore/<tema>`, una por issue.
+   `main` protegida: merge solo por PR con una aprobación y checks en verde.
+4. **Commits:** Conventional Commits, `tipo: mensaje corto y representativo`
+   (`feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `ci`).
    **Sin `Co-Authored-By` ni líneas de atribución.**
-5. **Pequeño y verificable.** Un PR = un requerimiento o una pieza de
-   infraestructura, con pruebas.
-6. Decisiones que afecten a más de un módulo → ADR corto en `docs/adr/`.
-7. Antes de dar algo por terminado, corre las verificaciones de la carpeta
-   (`make check` en backend, `pnpm check` en frontend).
+5. Un PR = una pieza verificable. Decisiones transversales → ADR en `docs/adr/`.
+6. Antes de terminar: `pnpm verify`, `pnpm typecheck`, `pnpm test`, `pnpm test:api`
+   y `pnpm codegen` sin diferencias.
 
 ## Definición de terminado
 
-- Compila, lint sin errores, pruebas en verde, SonarQube y Trivy sin bloqueos.
-- Contrato OpenAPI actualizado y válido si cambió la API.
-- Pruebas que cubren el caso feliz y al menos un caso de error por regla.
+- Pipeline en verde (`calidad`, `seguridad`, `imagen`).
+- `pnpm codegen` sin diferencias y oasdiff sin cambios incompatibles contra `main`.
+- `docs/modos-de-falla.md` actualizado con las fallas nuevas.
+- Pruebas del caso feliz y de al menos un rechazo por regla.
 - Sin `TODO` nuevos salvo `TODO(integracion)` registrados en preguntas abiertas.
-- Cambios de esquema o índices en PostgreSQL con su migración `.up.sql` y `.down.sql` en `backend/db/migrations/`.
