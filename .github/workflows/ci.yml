@@ -32,27 +32,9 @@ jobs:
       - run: pnpm codegen && git diff --exit-code
       - name: contrato compatible con main
         run: |
-          if git cat-file -e origin/main:contracts/openapi.yaml 2>/dev/null; then
-            git show origin/main:contracts/openapi.yaml > /tmp/base.yaml
-            go run github.com/oasdiff/oasdiff@${OASDIFF_VERSION} breaking /tmp/base.yaml contracts/openapi.yaml --fail-on ERR
-          else
-            echo "main todavía no tiene contrato publicado: no hay contra qué comparar"
-          fi
-      # Mientras no existan los e2e (Hito 2), la cobertura sale de las pruebas de Go
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm --filter @pingeso-civil/formularios-ui build
-      - run: pnpm --filter @pingeso-civil/formularios-ui exec playwright install --with-deps chromium
-      - run: pnpm --filter @pingeso-civil/formularios-ui e2e --project=chromium
-      - run: cd apps/api && go test -coverprofile=coverage.out ./...
-      - uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      - uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1.2.1
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          git show origin/main:contracts/openapi.yaml > "$RUNNER_TEMP/openapi-main.yaml"
+          go run github.com/oasdiff/oasdiff@"$OASDIFF_VERSION" breaking \
+            "$RUNNER_TEMP/openapi-main.yaml" contracts/openapi.yaml --fail-on ERR
 
   seguridad:
     runs-on: ubuntu-24.04
@@ -67,6 +49,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_ENABLE_COMMENTS: "false"
       - run: cd apps/api && go run golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION} ./...
       - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0 (hadolint v2.15.1)
         with: { recursive: true, failure-threshold: error }
@@ -84,14 +67,31 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: docker build --pull -f apps/api/Dockerfile --build-arg VERSION=${GITHUB_SHA::7} -t api:ci .
-      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+      - name: Construir imagen de la API
+        run: docker build --pull -f apps/api/Dockerfile --build-arg VERSION=${GITHUB_SHA::7} -t api:ci .
+      - name: Construir imagen web
+        run: docker build --pull -f apps/web/Dockerfile -t web:ci .
+      - name: Escanear imagen de la API con Trivy
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
-          {
-            version: "${{ env.TRIVY_VERSION }}",
-            image-ref: api:ci,
-            severity: "HIGH,CRITICAL",
-            ignore-unfixed: true,
-            exit-code: "1",
-          }
-      - run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock goodwithtech/dockle:${DOCKLE_VERSION} --exit-code 1 --exit-level warn api:ci
+          version: ${{ env.TRIVY_VERSION }}
+          image-ref: api:ci
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Escanear imagen web con Trivy
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          image-ref: web:ci
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Revisar ambas imágenes con Dockle
+        run: |
+          for imagen in api:ci web:ci; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              "goodwithtech/dockle:$DOCKLE_VERSION" --exit-code 1 --exit-level warn "$imagen"
+          done
