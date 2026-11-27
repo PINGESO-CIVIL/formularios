@@ -1,4 +1,4 @@
-// Comando api: solo wiring de configuraciÃÆ’Â³n, adaptadores y servidor HTTP.
+// Comando api: solo wiring de configuración, adaptadores y servidor HTTP.
 package main
 
 import (
@@ -16,12 +16,14 @@ import (
 
 	httpadapter "github.com/PINGESO-CIVIL/ms-formularios-pingeso/apps/api/internal/api"
 	"github.com/PINGESO-CIVIL/ms-formularios-pingeso/apps/api/internal/config"
+	"github.com/PINGESO-CIVIL/ms-formularios-pingeso/apps/api/internal/service"
 	"github.com/PINGESO-CIVIL/ms-formularios-pingeso/apps/api/internal/store"
+	"github.com/PINGESO-CIVIL/ms-formularios-pingeso/apps/api/internal/store/memoria"
 )
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error("api terminÃÆ’Â³ con error", "error", err)
+		slog.Error("api terminó con error", "error", err)
 		os.Exit(1)
 	}
 }
@@ -32,7 +34,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(os.Args[2], contrato, 0644)
+		return os.WriteFile(os.Args[2], contrato, 0o644)
 	}
 	cfg, err := config.FromOS()
 	if err != nil {
@@ -54,9 +56,14 @@ func run() error {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 
+	repoRespuestas := memoria.NuevoRepositorioRespuestas()
+	servicioRespuestas := service.NuevoServicioRespuestasSimulado(repoRespuestas)
+
 	router := httpadapter.NewRouter(httpadapter.RouterDeps{
-		Readiness: []httpadapter.ReadinessCheck{{Name: "postgres", Check: pool.Ping}},
-		Metrics:   registry, PublicarDocs: cfg.Env != config.EnvProd,
+		Readiness:    []httpadapter.ReadinessCheck{{Name: "postgres", Check: pool.Ping}},
+		Metrics:      registry,
+		PublicarDocs: cfg.Env != config.EnvProd,
+		Respuestas:   servicioRespuestas,
 	})
 
 	srv := &http.Server{
