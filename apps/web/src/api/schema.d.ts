@@ -4,6 +4,74 @@
  */
 
 export interface paths {
+    "/api/respuestas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lista respuestas con filtros y paginación
+         * @description Devuelve un listado paginado de respuestas filtrable por formulario, versión, estado y sujeto externo (RF-FOR-10). Con respuestas:operar filtra por el usuario autenticado; con respuestas:administrar lista todas.
+         */
+        get: operations["listarRespuestas"];
+        put?: never;
+        /**
+         * Inicia una respuesta en estado borrador
+         * @description Crea una respuesta en estado borrador asociada a una versión publicada de un formulario activo (RF-FOR-07).
+         */
+        post: operations["iniciarRespuesta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/respuestas/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtiene el detalle de una respuesta por UUID
+         * @description Consulta una respuesta por su identificador UUID (RF-FOR-10). Con respuestas:operar permite ver las propias; con respuestas:administrar permite ver respuestas de cualquier usuario.
+         */
+        get: operations["obtenerRespuesta"];
+        /**
+         * Guarda el avance parcial de una respuesta en borrador
+         * @description Actualiza los datos de una respuesta mientras se encuentre en estado borrador (RF-FOR-08). Responde 409 si ya fue enviada.
+         */
+        put: operations["guardarBorradorRespuesta"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/respuestas/{id}/enviar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Valida y envía definitivamente una respuesta
+         * @description Valida los datos contra el esquema de la versión publicada, calcula hash_contenido y cambia el estado a enviada de forma inmutable (RF-FOR-09). Si hay errores de validación devuelve 422 con errores por campo (puntero JSON y mensaje en español).
+         */
+        post: operations["enviarRespuesta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -59,6 +127,122 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        EnviarRespuestaInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/EnviarRespuestaInputBody.json
+             */
+            readonly $schema?: string;
+            /** @description Valores finales opcionales a validar antes del envío; si se omite, se validan los datos guardados en el borrador */
+            datos?: {
+                [key: string]: unknown;
+            };
+        };
+        ErrorCampo: {
+            /**
+             * @description Puntero JSON (RFC 6901) del campo con error
+             * @example /datos/calificacion
+             */
+            location: string;
+            /**
+             * @description Mensaje de validación en español
+             * @example Debe ser un número entero entre 1 y 5.
+             */
+            message: string;
+            /** @description Valor recibido en el campo cuando no es sensible */
+            value?: unknown;
+        };
+        ErrorDetail: {
+            /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
+            location?: string;
+            /** @description Error message text */
+            message?: string;
+            /** @description The value at the given location */
+            value?: unknown;
+        };
+        ErrorModel: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/ErrorModel.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description A human-readable explanation specific to this occurrence of the problem.
+             * @example Property foo is required but is missing.
+             */
+            detail?: string;
+            /** @description Optional list of individual error details */
+            errors?: components["schemas"]["ErrorDetail"][] | null;
+            /**
+             * Format: uri
+             * @description A URI reference that identifies the specific occurrence of the problem.
+             * @example https://example.com/error-log/abc123
+             */
+            instance?: string;
+            /**
+             * Format: int64
+             * @description HTTP status code
+             * @example 400
+             */
+            status?: number;
+            /**
+             * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+             * @example Bad Request
+             */
+            title?: string;
+            /**
+             * Format: uri
+             * @description A URI reference to human-readable documentation for the error.
+             * @default about:blank
+             * @example https://example.com/errors/example
+             */
+            type: string;
+        };
+        ErrorValidacion: {
+            /**
+             * @description Explicación legible en español de esta ocurrencia
+             * @example Los datos de la respuesta no cumplen el esquema del formulario.
+             */
+            detail: string;
+            /** @description Listado de errores de validación por campo con puntero JSON y mensaje en español */
+            errors: components["schemas"]["ErrorCampo"][] | null;
+            /**
+             * Format: uri
+             * @description URI que identifica esta ocurrencia específica
+             */
+            instance?: string;
+            /**
+             * Format: int64
+             * @description Código de estado HTTP
+             * @example 422
+             */
+            status: number;
+            /**
+             * @description Resumen breve del problema
+             * @example Unprocessable Entity
+             */
+            title: string;
+            /**
+             * Format: uri
+             * @description URI de referencia del tipo de problema
+             * @example about:blank
+             */
+            type?: string;
+        };
+        GuardarBorradorInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/GuardarBorradorInputBody.json
+             */
+            readonly $schema?: string;
+            /** @description Valores actualizados del borrador de respuesta */
+            datos: {
+                [key: string]: unknown;
+            };
+        };
         HealthStatus: {
             /**
              * Format: uri
@@ -72,6 +256,142 @@ export interface components {
             /** @enum {string} */
             status: "ok" | "unavailable";
         };
+        IniciarRespuestaInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/IniciarRespuestaInputBody.json
+             */
+            readonly $schema?: string;
+            /** @description Valores iniciales opcionales para el borrador (ej. encuesta, checklist o consentimiento) */
+            datos?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: uuid
+             * @description UUID del formulario activo
+             * @example 10000000-0000-4000-8000-000000000002
+             */
+            formulario_id: string;
+            /**
+             * @description Identificador opaco de la entidad externa asociada (opcional)
+             * @example EQ-205
+             */
+            sujeto_id?: string;
+            /**
+             * @description Tipo opaco de entidad externa asociada (opcional)
+             * @example equipo
+             */
+            sujeto_tipo?: string;
+            /**
+             * Format: uuid
+             * @description UUID de la versión publicada sobre la que se responderá
+             * @example 20000000-0000-4000-8000-000000000002
+             */
+            version_id: string;
+        };
+        ListarRespuestasOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/ListarRespuestasOutputBody.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description Desplazamiento aplicado en esta página
+             * @example 0
+             */
+            desplazamiento: number;
+            /** @description Respuestas que cumplen los criterios de búsqueda */
+            elementos: components["schemas"]["RespuestaDTO"][] | null;
+            /**
+             * Format: int64
+             * @description Límite aplicado en esta página
+             * @example 20
+             */
+            limite: number;
+            /**
+             * Format: int64
+             * @description Cantidad total de respuestas coincidentes
+             * @example 3
+             */
+            total: number;
+        };
+        RespuestaDTO: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/RespuestaDTO.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: date-time
+             * @description Fecha y hora de última actualización en formato RFC 3339
+             * @example 2026-11-20T14:35:00Z
+             */
+            actualizado_en: string;
+            /**
+             * Format: date-time
+             * @description Fecha y hora de creación en formato RFC 3339
+             * @example 2026-11-20T14:30:00Z
+             */
+            creado_en: string;
+            /**
+             * Format: uuid
+             * @description Identificador UUID (claim sub) del usuario creador
+             * @example 99999999-9999-4999-8999-999999999999
+             */
+            creado_por: string;
+            /** @description Valores respondidos por el usuario según el esquema del formulario */
+            datos: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: date-time
+             * @description Fecha y hora de envío definitivo; presente solo cuando estado es enviada
+             */
+            enviada_en?: string;
+            /**
+             * @description Estado actual de la respuesta
+             * @example borrador
+             * @enum {string}
+             */
+            estado: "borrador" | "enviada";
+            /**
+             * Format: uuid
+             * @description Identificador del formulario al que pertenece la respuesta
+             * @example 10000000-0000-4000-8000-000000000001
+             */
+            formulario_id: string;
+            /**
+             * @description Resumen SHA-256 canónico fijado al enviar la respuesta
+             * @example sha256:6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b
+             */
+            hash_contenido?: string;
+            /**
+             * Format: uuid
+             * @description Identificador único de la respuesta
+             * @example 30000000-0000-4000-8000-000000000001
+             */
+            id: string;
+            /**
+             * @description Identificador opaco de la entidad externa asociada, si aplica
+             * @example AT-2026-001
+             */
+            sujeto_id?: string;
+            /**
+             * @description Tipo opaco de entidad externa asociada, si aplica
+             * @example atencion
+             */
+            sujeto_tipo?: string;
+            /**
+             * Format: uuid
+             * @description Identificador de la versión publicada sobre la que se responde
+             * @example 20000000-0000-4000-8000-000000000001
+             */
+            version_id: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -81,6 +401,394 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listarRespuestas: {
+        parameters: {
+            query?: {
+                /** @description Filtra por UUID del formulario */
+                formulario_id?: string;
+                /** @description Filtra por UUID de la versión publicada */
+                version_id?: string;
+                /** @description Filtra por estado de la respuesta */
+                estado?: "borrador" | "enviada";
+                /** @description Filtra por tipo opaco de entidad externa */
+                sujeto_tipo?: string;
+                /** @description Filtra por identificador opaco de entidad externa */
+                sujeto_id?: string;
+                /** @description Cantidad máxima de resultados por página */
+                limite?: number;
+                /** @description Cantidad de registros a omitir */
+                desplazamiento?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListarRespuestasOutputBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Parámetros de consulta inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorValidacion"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    iniciarRespuesta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IniciarRespuestaInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaDTO"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Error de validación en los campos de la solicitud */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorValidacion"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    obtenerRespuesta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description UUID de la respuesta a consultar
+                 * @example 30000000-0000-4000-8000-000000000001
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaDTO"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Identificador de respuesta inválido */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorValidacion"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    guardarBorradorRespuesta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description UUID de la respuesta en estado borrador
+                 * @example 30000000-0000-4000-8000-000000000002
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuardarBorradorInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaDTO"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Error de validación en los campos del borrador */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorValidacion"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    enviarRespuesta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description UUID de la respuesta en borrador a enviar
+                 * @example 30000000-0000-4000-8000-000000000002
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnviarRespuestaInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaDTO"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Los datos de la respuesta no cumplen el esquema del formulario */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorValidacion"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     getHealth: {
         parameters: {
             query?: never;

@@ -1,5 +1,157 @@
 components:
   schemas:
+    EnviarRespuestaInputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnviarRespuestaInputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        datos:
+          additionalProperties: {}
+          description: Valores finales opcionales a validar antes del envío; si se omite, se validan los datos guardados en el borrador
+          type: object
+      type: object
+    ErrorCampo:
+      additionalProperties: false
+      properties:
+        location:
+          description: Puntero JSON (RFC 6901) del campo con error
+          examples:
+            - /datos/calificacion
+          type: string
+        message:
+          description: Mensaje de validación en español
+          examples:
+            - Debe ser un número entero entre 1 y 5.
+          type: string
+        value:
+          description: Valor recibido en el campo cuando no es sensible
+      required:
+        - location
+        - message
+      type: object
+    ErrorDetail:
+      additionalProperties: false
+      properties:
+        location:
+          description: Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
+          type: string
+        message:
+          description: Error message text
+          type: string
+        value:
+          description: The value at the given location
+      type: object
+    ErrorModel:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ErrorModel.json
+          format: uri
+          readOnly: true
+          type: string
+        detail:
+          description: A human-readable explanation specific to this occurrence of the problem.
+          examples:
+            - Property foo is required but is missing.
+          type: string
+        errors:
+          description: Optional list of individual error details
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+          type:
+            - array
+            - "null"
+        instance:
+          description: A URI reference that identifies the specific occurrence of the problem.
+          examples:
+            - https://example.com/error-log/abc123
+          format: uri
+          type: string
+        status:
+          description: HTTP status code
+          examples:
+            - 400
+          format: int64
+          type: integer
+        title:
+          description: A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+          examples:
+            - Bad Request
+          type: string
+        type:
+          default: about:blank
+          description: A URI reference to human-readable documentation for the error.
+          examples:
+            - https://example.com/errors/example
+          format: uri
+          type: string
+      type: object
+    ErrorValidacion:
+      additionalProperties: false
+      properties:
+        detail:
+          description: Explicación legible en español de esta ocurrencia
+          examples:
+            - Los datos de la respuesta no cumplen el esquema del formulario.
+          type: string
+        errors:
+          description: Listado de errores de validación por campo con puntero JSON y mensaje en español
+          items:
+            $ref: "#/components/schemas/ErrorCampo"
+          type:
+            - array
+            - "null"
+        instance:
+          description: URI que identifica esta ocurrencia específica
+          format: uri
+          type: string
+        status:
+          description: Código de estado HTTP
+          examples:
+            - 422
+          format: int64
+          type: integer
+        title:
+          description: Resumen breve del problema
+          examples:
+            - Unprocessable Entity
+          type: string
+        type:
+          description: URI de referencia del tipo de problema
+          examples:
+            - about:blank
+          format: uri
+          type: string
+      required:
+        - title
+        - status
+        - detail
+        - errors
+      type: object
+    GuardarBorradorInputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/GuardarBorradorInputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        datos:
+          additionalProperties: {}
+          description: Valores actualizados del borrador de respuesta
+          type: object
+      required:
+        - datos
+      type: object
     HealthStatus:
       additionalProperties: false
       properties:
@@ -22,11 +174,630 @@ components:
       required:
         - status
       type: object
+    IniciarRespuestaInputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/IniciarRespuestaInputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        datos:
+          additionalProperties: {}
+          description: Valores iniciales opcionales para el borrador (ej. encuesta, checklist o consentimiento)
+          type: object
+        formulario_id:
+          description: UUID del formulario activo
+          examples:
+            - 10000000-0000-4000-8000-000000000002
+          format: uuid
+          type: string
+        sujeto_id:
+          description: Identificador opaco de la entidad externa asociada (opcional)
+          examples:
+            - EQ-205
+          maxLength: 120
+          minLength: 1
+          type: string
+        sujeto_tipo:
+          description: Tipo opaco de entidad externa asociada (opcional)
+          examples:
+            - equipo
+          maxLength: 60
+          minLength: 1
+          pattern: ^[a-z0-9_-]+$
+          type: string
+        version_id:
+          description: UUID de la versión publicada sobre la que se responderá
+          examples:
+            - 20000000-0000-4000-8000-000000000002
+          format: uuid
+          type: string
+      required:
+        - formulario_id
+        - version_id
+      type: object
+    ListarRespuestasOutputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListarRespuestasOutputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        desplazamiento:
+          description: Desplazamiento aplicado en esta página
+          examples:
+            - 0
+          format: int64
+          type: integer
+        elementos:
+          description: Respuestas que cumplen los criterios de búsqueda
+          items:
+            $ref: "#/components/schemas/RespuestaDTO"
+          type:
+            - array
+            - "null"
+        limite:
+          description: Límite aplicado en esta página
+          examples:
+            - 20
+          format: int64
+          type: integer
+        total:
+          description: Cantidad total de respuestas coincidentes
+          examples:
+            - 3
+          format: int64
+          type: integer
+      required:
+        - elementos
+        - total
+        - limite
+        - desplazamiento
+      type: object
+    RespuestaDTO:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/RespuestaDTO.json
+          format: uri
+          readOnly: true
+          type: string
+        actualizado_en:
+          description: Fecha y hora de última actualización en formato RFC 3339
+          examples:
+            - "2026-11-20T14:35:00Z"
+          format: date-time
+          type: string
+        creado_en:
+          description: Fecha y hora de creación en formato RFC 3339
+          examples:
+            - "2026-11-20T14:30:00Z"
+          format: date-time
+          type: string
+        creado_por:
+          description: Identificador UUID (claim sub) del usuario creador
+          examples:
+            - 99999999-9999-4999-8999-999999999999
+          format: uuid
+          type: string
+        datos:
+          additionalProperties: {}
+          description: Valores respondidos por el usuario según el esquema del formulario
+          type: object
+        enviada_en:
+          description: Fecha y hora de envío definitivo; presente solo cuando estado es enviada
+          format: date-time
+          type: string
+        estado:
+          description: Estado actual de la respuesta
+          enum:
+            - borrador
+            - enviada
+          examples:
+            - borrador
+          type: string
+        formulario_id:
+          description: Identificador del formulario al que pertenece la respuesta
+          examples:
+            - 10000000-0000-4000-8000-000000000001
+          format: uuid
+          type: string
+        hash_contenido:
+          description: Resumen SHA-256 canónico fijado al enviar la respuesta
+          examples:
+            - sha256:6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b
+          type: string
+        id:
+          description: Identificador único de la respuesta
+          examples:
+            - 30000000-0000-4000-8000-000000000001
+          format: uuid
+          type: string
+        sujeto_id:
+          description: Identificador opaco de la entidad externa asociada, si aplica
+          examples:
+            - AT-2026-001
+          maxLength: 120
+          type: string
+        sujeto_tipo:
+          description: Tipo opaco de entidad externa asociada, si aplica
+          examples:
+            - atencion
+          maxLength: 60
+          type: string
+        version_id:
+          description: Identificador de la versión publicada sobre la que se responde
+          examples:
+            - 20000000-0000-4000-8000-000000000001
+          format: uuid
+          type: string
+      required:
+        - id
+        - formulario_id
+        - version_id
+        - estado
+        - datos
+        - creado_por
+        - creado_en
+        - actualizado_en
+      type: object
 info:
+  description: |-
+    Servicio de formularios de la LPS (PT4): definición de formularios dinámicos, versiones publicadas y recolección de respuestas.
+
+    Cada operación declara en `x-permiso` lo que exige (`publico`, `autenticado` o `<recurso>:<accion>`). Los errores siguen RFC 9457 (`application/problem+json`).
   title: ms-formularios
   version: 0.1.0
 openapi: 3.1.0
 paths:
+  /api/respuestas:
+    get:
+      description: Devuelve un listado paginado de respuestas filtrable por formulario, versión, estado y sujeto externo (RF-FOR-10). Con respuestas:operar filtra por el usuario autenticado; con respuestas:administrar lista todas.
+      operationId: listarRespuestas
+      parameters:
+        - description: Filtra por UUID del formulario
+          explode: false
+          in: query
+          name: formulario_id
+          schema:
+            description: Filtra por UUID del formulario
+            format: uuid
+            type: string
+        - description: Filtra por UUID de la versión publicada
+          explode: false
+          in: query
+          name: version_id
+          schema:
+            description: Filtra por UUID de la versión publicada
+            format: uuid
+            type: string
+        - description: Filtra por estado de la respuesta
+          explode: false
+          in: query
+          name: estado
+          schema:
+            description: Filtra por estado de la respuesta
+            enum:
+              - borrador
+              - enviada
+            type: string
+        - description: Filtra por tipo opaco de entidad externa
+          explode: false
+          in: query
+          name: sujeto_tipo
+          schema:
+            description: Filtra por tipo opaco de entidad externa
+            maxLength: 60
+            pattern: ^[a-z0-9_-]+$
+            type: string
+        - description: Filtra por identificador opaco de entidad externa
+          explode: false
+          in: query
+          name: sujeto_id
+          schema:
+            description: Filtra por identificador opaco de entidad externa
+            maxLength: 120
+            type: string
+        - description: Cantidad máxima de resultados por página
+          explode: false
+          in: query
+          name: limite
+          schema:
+            default: 20
+            description: Cantidad máxima de resultados por página
+            format: int64
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: Cantidad de registros a omitir
+          explode: false
+          in: query
+          name: desplazamiento
+          schema:
+            default: 0
+            description: Cantidad de registros a omitir
+            format: int64
+            maximum: 10000
+            minimum: 0
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListarRespuestasOutputBody"
+          description: OK
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Forbidden
+        "422":
+          content:
+            application/problem+json:
+              examples:
+                parametro_invalido:
+                  description: Ejemplo de error 422 cuando un filtro o identificador no cumple el formato esperado.
+                  summary: Parámetro de consulta o ruta inválido
+                  value:
+                    type: about:blank
+                    title: Unprocessable Entity
+                    status: 422
+                    detail: La solicitud contiene parámetros inválidos.
+                    errors:
+                      - location: /estado
+                        message: "Debe ser uno de los valores permitidos: borrador o enviada."
+                        value: pendiente
+              schema:
+                $ref: "#/components/schemas/ErrorValidacion"
+          description: Parámetros de consulta inválidos
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Lista respuestas con filtros y paginación
+      tags:
+        - Respuestas
+      x-permiso: respuestas:operar
+    post:
+      description: Crea una respuesta en estado borrador asociada a una versión publicada de un formulario activo (RF-FOR-07).
+      operationId: iniciarRespuesta
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IniciarRespuestaInputBody"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RespuestaDTO"
+          description: Created
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "422":
+          content:
+            application/problem+json:
+              examples:
+                identificadores_invalidos:
+                  description: Ejemplo de error 422 cuando el formulario o tipo de sujeto no cumplen las validaciones del contrato.
+                  summary: Campos de entrada inválidos al iniciar respuesta
+                  value:
+                    type: about:blank
+                    title: Unprocessable Entity
+                    status: 422
+                    detail: La solicitud contiene campos inválidos.
+                    errors:
+                      - location: /formulario_id
+                        message: Debe ser un identificador UUID válido.
+                        value: id-invalido
+                      - location: /sujeto_tipo
+                        message: Solo se permiten letras minúsculas, dígitos, guiones y guiones bajos (máximo 60 caracteres).
+                        value: Tipo Inválido!
+              schema:
+                $ref: "#/components/schemas/ErrorValidacion"
+          description: Error de validación en los campos de la solicitud
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Inicia una respuesta en estado borrador
+      tags:
+        - Respuestas
+      x-permiso: respuestas:operar
+  /api/respuestas/{id}:
+    get:
+      description: Consulta una respuesta por su identificador UUID (RF-FOR-10). Con respuestas:operar permite ver las propias; con respuestas:administrar permite ver respuestas de cualquier usuario.
+      operationId: obtenerRespuesta
+      parameters:
+        - description: UUID de la respuesta a consultar
+          example: 30000000-0000-4000-8000-000000000001
+          in: path
+          name: id
+          required: true
+          schema:
+            description: UUID de la respuesta a consultar
+            examples:
+              - 30000000-0000-4000-8000-000000000001
+            format: uuid
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RespuestaDTO"
+          description: OK
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              examples:
+                parametro_invalido:
+                  description: Ejemplo de error 422 cuando un filtro o identificador no cumple el formato esperado.
+                  summary: Parámetro de consulta o ruta inválido
+                  value:
+                    type: about:blank
+                    title: Unprocessable Entity
+                    status: 422
+                    detail: La solicitud contiene parámetros inválidos.
+                    errors:
+                      - location: /estado
+                        message: "Debe ser uno de los valores permitidos: borrador o enviada."
+                        value: pendiente
+              schema:
+                $ref: "#/components/schemas/ErrorValidacion"
+          description: Identificador de respuesta inválido
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Obtiene el detalle de una respuesta por UUID
+      tags:
+        - Respuestas
+      x-permiso: respuestas:operar
+    put:
+      description: Actualiza los datos de una respuesta mientras se encuentre en estado borrador (RF-FOR-08). Responde 409 si ya fue enviada.
+      operationId: guardarBorradorRespuesta
+      parameters:
+        - description: UUID de la respuesta en estado borrador
+          example: 30000000-0000-4000-8000-000000000002
+          in: path
+          name: id
+          required: true
+          schema:
+            description: UUID de la respuesta en estado borrador
+            examples:
+              - 30000000-0000-4000-8000-000000000002
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardarBorradorInputBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RespuestaDTO"
+          description: OK
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "422":
+          content:
+            application/problem+json:
+              examples:
+                borrador_invalido:
+                  description: Ejemplo de error 422 cuando el parámetro id no es UUID o falta el objeto datos.
+                  summary: Identificador o cuerpo inválido al guardar borrador
+                  value:
+                    type: about:blank
+                    title: Unprocessable Entity
+                    status: 422
+                    detail: La solicitud contiene campos inválidos.
+                    errors:
+                      - location: /id
+                        message: Debe ser un identificador UUID válido.
+                        value: no-es-uuid
+                      - location: /datos
+                        message: El objeto de datos de la respuesta es obligatorio.
+              schema:
+                $ref: "#/components/schemas/ErrorValidacion"
+          description: Error de validación en los campos del borrador
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Guarda el avance parcial de una respuesta en borrador
+      tags:
+        - Respuestas
+      x-permiso: respuestas:operar
+  /api/respuestas/{id}/enviar:
+    post:
+      description: Valida los datos contra el esquema de la versión publicada, calcula hash_contenido y cambia el estado a enviada de forma inmutable (RF-FOR-09). Si hay errores de validación devuelve 422 con errores por campo (puntero JSON y mensaje en español).
+      operationId: enviarRespuesta
+      parameters:
+        - description: UUID de la respuesta en borrador a enviar
+          example: 30000000-0000-4000-8000-000000000002
+          in: path
+          name: id
+          required: true
+          schema:
+            description: UUID de la respuesta en borrador a enviar
+            examples:
+              - 30000000-0000-4000-8000-000000000002
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnviarRespuestaInputBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RespuestaDTO"
+          description: OK
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "422":
+          content:
+            application/problem+json:
+              examples:
+                consentimiento_no_aceptado:
+                  description: Ejemplo de error 422 al intentar enviar un consentimiento sin aceptar los términos.
+                  summary: Consentimiento sin aceptación obligatoria
+                  value:
+                    type: about:blank
+                    title: Unprocessable Entity
+                    status: 422
+                    detail: Los datos de la respuesta no cumplen el esquema del formulario.
+                    errors:
+                      - location: /datos/acepta_terminos
+                        message: Debe aceptar los términos para enviar el consentimiento.
+                        value: false
+                encuesta_invalida:
+                  description: Ejemplo de error 422 al enviar una encuesta con calificación fuera de rango y correo mal formado.
+                  summary: Encuesta con campos inválidos
+                  value:
+                    type: about:blank
+                    title: Unprocessable Entity
+                    status: 422
+                    detail: Los datos de la respuesta no cumplen el esquema del formulario.
+                    errors:
+                      - location: /datos/calificacion
+                        message: Debe ser un número entero entre 1 y 5.
+                        value: 7
+                      - location: /datos/correo_contacto
+                        message: Debe tener un formato de correo electrónico válido.
+                        value: correo-invalido
+              schema:
+                $ref: "#/components/schemas/ErrorValidacion"
+          description: Los datos de la respuesta no cumplen el esquema del formulario
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      summary: Valida y envía definitivamente una respuesta
+      tags:
+        - Respuestas
+      x-permiso: respuestas:operar
   /healthz:
     get:
       operationId: getHealth
@@ -38,6 +809,7 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
           description: Disponible
       summary: El proceso está vivo
+      x-permiso: publico
   /metrics:
     get:
       operationId: getMetrics
@@ -49,6 +821,7 @@ paths:
                 type: string
           description: Métricas
       summary: Métricas de Prometheus
+      x-permiso: publico
   /readyz:
     get:
       operationId: getReadiness
@@ -66,3 +839,4 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
           description: Dependencia no disponible
       summary: Disponibilidad del servicio
+      x-permiso: publico

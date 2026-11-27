@@ -1,2 +1,3 @@
-// Package app contiene los casos de uso, uno por archivo. Depende de domain y ports.
-package app
+// Package service contiene las reglas de negocio del servicio formularios.
+// No conoce HTTP ni SQL: consume puertos de almacenamiento implementados en internal/store.
+package service
