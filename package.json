@@ -1,0 +1,24 @@
+{
+  "name": "ms-formularios",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": "22.22.0"
+  },
+  "scripts": {
+    "verify": "prettier --check . && oxlint --deny-warnings apps/web/src && pnpm verify:api",
+    "verify:api": "cd apps/api && go vet ./...",
+    "typecheck": "pnpm --filter @pingeso-civil/formularios-ui typecheck",
+    "test": "pnpm --filter @pingeso-civil/formularios-ui test",
+    "test:api": "cd apps/api && go test ./...",
+    "test:e2e:api": "cd apps/api && go test -v ./e2e/...",
+    "codegen": "pnpm codegen:api && pnpm --filter @pingeso-civil/formularios-ui codegen",
+    "codegen:api": "cd apps/api && go run ./cmd/api openapi ../../contracts/openapi.yaml"
+  },
+  "devDependencies": {
+    "lefthook": "catalog:",
+    "oxlint": "catalog:",
+    "prettier": "catalog:",
+    "prettier-plugin-tailwindcss": "catalog:"
+  }
+}

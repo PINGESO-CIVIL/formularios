@@ -48,10 +48,7 @@ plantilla que exige el DAS.
 
 ## Desviaciones registradas
 
-- **Toolchain Go:** el DAS fija `go1.26.5`. Se usa `go1.26.11` (el mismo de
-  `usuarios-roles`), porque las versiones anteriores tienen vulnerabilidades de
-  la biblioteca estándar que bloquean govulncheck y Trivy. Requiere visto bueno
-  del jefe de proyecto.
+- **Toolchain Go:** se adopta `go1.26.5` según el DAS.
 
 ## Consecuencias
 

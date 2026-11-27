@@ -1,8 +1,0 @@
-dist
-coverage
-pnpm-lock.yaml
-**/public/mockServiceWorker.js
-**/src/api/schema.d.ts
-**/test-results
-**/playwright-report
-AGENTS.md

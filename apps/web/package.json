@@ -1,0 +1,37 @@
+{
+  "name": "@pingeso-civil/formularios-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "codegen": "openapi-typescript ../../contracts/openapi.yaml -o src/api/schema.d.ts"
+  },
+  "dependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@base-ui/react": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "react-router": "catalog:",
+    "react-hook-form": "catalog:",
+    "openapi-fetch": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "tailwindcss": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "openapi-typescript": "catalog:",
+    "msw": "catalog:",
+    "vitest": "catalog:",
+    "@playwright/test": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/node": "catalog:"
+  }
+}

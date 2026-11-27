@@ -11,14 +11,40 @@
 .DS_Store
 
 # Backend
-backend/bin/
-backend/coverage.out
-backend/.data/
+apps/api/bin/
+apps/api/coverage.out
+apps/api/.data/
 
 # Frontend
 node_modules/
 dist/
 coverage/
 *.tsbuildinfo
-frontend/apps/forms-admin/test-results/
-frontend/apps/forms-admin/playwright-report/
+apps/web/test-results/
+apps/web/playwright-report/
+
+# Binarios y artefactos de Go
+*.exe
+*.test
+*.out
+coverage.*
+!coverage.go
+
+# Dependencias y builds del frontend
+node_modules/
+dist/
+
+# Variables de entorno: nunca se suben
+.env
+.env.*
+!.env.example
+
+# SonarQube
+.scannerwork/
+
+# Llaves de firma JWT: nunca se suben
+.secretos/
+*.pem
+
+.local-tools/
+.hook-check/

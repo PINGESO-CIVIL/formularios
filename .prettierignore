@@ -1,0 +1,13 @@
+# El contrato se genera con "pnpm codegen": no se formatea a mano
+contracts/openapi.yaml
+pnpm-lock.yaml
+coverage.out
+
+.local-tools/
+.hook-check/
+
+apps/web/public/mockServiceWorker.js
+apps/web/src/api/schema.d.ts
+docs/referencia/
+contracts/form-schema.md
+contracts/events/
